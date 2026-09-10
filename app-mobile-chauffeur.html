@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Transports A.Blondel — Espace chauffeur</title>
+<style>
+  :root{
+    --bg: #12161B;
+    --panel: #1A1F26;
+    --panel-2: #20262E;
+    --line: #2B323C;
+    --text: #E7EAEE;
+    --text-dim: #8B95A3;
+    --accent: #3E6FBF;
+    --accent-2: #5C8ADD;
+    --ok: #45C285;
+    --warn: #F2B134;
+    --danger: #EF5A63;
+    --info: #6C9CFF;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:#0B0E12;
+    color:var(--text);
+    font-family:'IBM Plex Sans', -apple-system, sans-serif;
+    display:flex;
+    justify-content:center;
+    min-height:100vh;
+    padding:24px 0;
+  }
+  .mono{font-family:'IBM Plex Mono', monospace;}
+  .phone{
+    width:390px; max-width:100%;
+    background:var(--bg);
+    min-height:760px;
+    border-radius:28px;
+    border:1px solid var(--line);
+    overflow:hidden;
+    display:flex; flex-direction:column;
+    position:relative;
+  }
+  .screen{display:none; flex-direction:column; flex:1;}
+  .screen.active{display:flex;}
+
+  /* Login screen */
+  #screen-login{justify-content:center; padding:40px 28px;}
+  .login-brand{text-align:center; margin-bottom:36px;}
+  .login-logo{width:64px; height:64px; object-fit:contain; margin-bottom:14px;}
+  .logo-upload-box{
+    border:2px dashed var(--line); border-radius:12px;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+    overflow:hidden; background:var(--panel-2); transition:border-color .15s ease;
+  }
+  .logo-upload-box:hover{border-color:var(--accent);}
+  .logo-upload-box img{width:100%; height:100%; object-fit:contain; display:none;}
+  .logo-upload-box .logo-placeholder{font-size:10px; color:var(--text-dim); text-align:center; line-height:1.3; padding:2px;}
+  .login-brand-name{font-size:20px; font-weight:600;}
+  .login-brand-sub{font-size:13px; color:var(--text-dim); margin-top:4px;}
+  .field{margin-bottom:16px;}
+  .field label{display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px;}
+  .field input{
+    width:100%; background:var(--panel-2); border:1px solid var(--line);
+    color:var(--text); font-size:15px; padding:13px 14px; border-radius:9px;
+    font-family:inherit;
+  }
+  .field input:focus{outline:none; border-color:var(--accent);}
+  .btn-primary{
+    width:100%; background:var(--accent); color:#FFFFFF; border:none;
+    font-size:15px; font-weight:600; padding:14px; border-radius:9px;
+    cursor:pointer; margin-top:6px;
+  }
+  .btn-primary:hover{filter:brightness(1.06);}
+  .login-error{
+    color:var(--danger); font-size:13px; margin-top:10px; text-align:center;
+    display:none;
+  }
+  .login-note{
+    font-size:12px; color:var(--text-dim); text-align:center; margin-top:22px;
+  }
+
+  /* Home screen */
+  #screen-home{flex:1;}
+  .topbar{
+    display:flex; align-items:center; gap:12px;
+    padding:20px 20px 16px; border-bottom:1px solid var(--line);
+  }
+  .avatar{
+    width:40px; height:40px; border-radius:50%;
+    background:var(--panel-2); display:flex; align-items:center; justify-content:center;
+    font-size:13px; font-weight:600; color:var(--text-dim); flex-shrink:0;
+  }
+  .topbar-name{font-size:15px; font-weight:600;}
+  .topbar-date{font-size:12px; color:var(--text-dim);}
+  .btn-logout{
+    margin-left:auto; background:none; border:1px solid var(--line); color:var(--text-dim);
+    font-size:12px; padding:7px 12px; border-radius:7px; cursor:pointer;
+  }
+  .btn-logout:hover{background:var(--panel-2); color:var(--text);}
+
+  .home-content{padding:20px; padding-bottom:90px; overflow-y:auto; flex:1;}
+
+  .mobile-view{display:none;}
+  .mobile-view.active{display:block;}
+
+  .bottom-nav{
+    display:flex; border-top:1px solid var(--line); background:var(--panel);
+    flex-shrink:0;
+  }
+  .bottom-nav-item{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;
+    background:none; border:none; color:var(--text-dim); font-size:11px; font-weight:500;
+    padding:12px 4px 14px; cursor:pointer;
+  }
+  .bottom-nav-item .nav-icon{display:flex; align-items:center; justify-content:center; opacity:0.75;}
+  .bottom-nav-item .nav-icon svg{width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round;}
+  .bottom-nav-item.active .nav-icon{opacity:1;}
+  .bottom-nav-item.active{color:var(--accent);}
+
+  .chip{display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:100px; font-size:12px; font-weight:500;}
+  .chip.ok{background:rgba(69,194,133,0.15); color:var(--ok);}
+  .chip.warn{background:rgba(242,177,52,0.15); color:var(--warn);}
+  .chip.danger{background:rgba(229,72,77,0.15); color:var(--danger);}
+  .chip-dot{width:6px; height:6px; border-radius:50%; background:currentColor;}
+  .doc-row{padding:11px 0; border-bottom:1px solid var(--line);}
+  .doc-row:last-child{border-bottom:none;}
+  .doc-name{font-size:14px; margin-bottom:6px;}
+
+  .mobile-modal-overlay{
+    display:none; position:absolute; inset:0; background:rgba(8,10,13,0.65);
+    align-items:center; justify-content:center; z-index:50; padding:24px;
+  }
+  .mobile-modal-overlay.active{display:flex;}
+  .mobile-modal{
+    width:100%; background:var(--panel); border:1px solid var(--line);
+    border-radius:14px; overflow:hidden;
+  }
+  .mobile-modal-head{padding:18px 20px 4px;}
+  .mobile-modal-head-title{font-size:16px; font-weight:600;}
+  .mobile-modal-head-sub{font-size:12px; color:var(--text-dim); margin-top:4px;}
+  .mobile-modal-body{padding:16px 20px;}
+  .mobile-modal-foot{padding:14px 20px 20px; display:flex; gap:8px;}
+  .mobile-modal-foot .btn-ghost{
+    flex:1; background:none; border:1px solid var(--line); color:var(--text);
+    font-size:14px; font-weight:500; padding:12px; border-radius:9px; cursor:pointer;
+  }
+  .mobile-modal-foot .btn-ghost:hover{background:var(--panel-2);}
+  .mobile-modal-foot .btn-primary{flex:1; margin-top:0;}
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    padding:18px; margin-bottom:16px;
+  }
+  .card-title{font-size:13px; font-weight:600; margin-bottom:14px; color:var(--text-dim);}
+  .mission-row{display:flex; justify-content:space-between; font-size:14px; padding:8px 0; border-bottom:1px solid var(--line);}
+  .detail-row{display:flex; justify-content:space-between; font-size:13px; padding:9px 0; border-bottom:1px solid var(--line);}
+  .detail-row:last-child{border-bottom:none;}
+  .detail-label{color:var(--text-dim);}
+  .detail-value{font-weight:500; text-align:right;}
+  .mission-row:last-child{border-bottom:none;}
+  .mission-label{color:var(--text-dim);}
+  .mission-value{font-weight:500; text-align:right;}
+
+  .status-steps{display:flex; gap:8px; margin-top:4px;}
+  .status-btn{
+    flex:1; background:var(--panel-2); border:1px solid var(--line); color:var(--text);
+    font-size:12px; font-weight:500; padding:11px 4px; border-radius:8px; cursor:pointer;
+    text-align:center;
+  }
+  .status-btn.done{background:rgba(69,194,133,0.15); border-color:var(--ok); color:var(--ok);}
+  .status-btn.active-step{background:rgba(91,141,239,0.15); border-color:var(--info); color:var(--info);}
+
+  .frais-row{
+    display:flex; align-items:center; gap:10px;
+    padding:11px 0; border-bottom:1px solid var(--line); font-size:14px;
+  }
+  .frais-row:last-child{border-bottom:none;}
+  .frais-row input[type="checkbox"]{width:18px; height:18px; accent-color:var(--accent); flex-shrink:0;}
+  .frais-label{flex:1;}
+  .frais-montant{font-family:'IBM Plex Mono', monospace; color:var(--text-dim); font-size:13px;}
+
+  .total-row{
+    display:flex; justify-content:space-between; align-items:center;
+    padding-top:14px; margin-top:4px; border-top:1px solid var(--line);
+    font-size:14px;
+  }
+  .total-value{font-size:18px; font-weight:600; color:var(--accent);}
+
+  .btn-secondary{
+    width:100%; background:none; border:1px solid var(--line); color:var(--text);
+    font-size:14px; font-weight:500; padding:13px; border-radius:9px; cursor:pointer; margin-top:14px;
+  }
+  .btn-secondary:hover{background:var(--panel-2);}
+  .btn-secondary.validated{background:rgba(69,194,133,0.15); border-color:var(--ok); color:var(--ok);}
+
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px;}
+  .field input{
+    width:100%; background:var(--panel-2); border:1px solid var(--line);
+    color:var(--text); font-size:14px; padding:11px 12px; border-radius:8px;
+    font-family:inherit;
+  }
+  .field input:focus{outline:none; border-color:var(--accent);}
+  .field-row{display:flex; gap:10px;}
+  .field-row .field{flex:1;}
+
+  .plein-tabs{display:flex; gap:8px; margin-bottom:16px;}
+  .plein-tab{
+    flex:1; background:var(--panel-2); border:1px solid var(--line); color:var(--text-dim);
+    font-size:13px; font-weight:600; padding:10px; border-radius:8px; cursor:pointer;
+  }
+  .plein-tab.active{background:var(--accent); border-color:var(--accent); color:#FFFFFF;}
+  .plein-panel{display:none;}
+  .plein-panel.active{display:block;}
+
+  .achat-item{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:10px 0; border-bottom:1px solid var(--line); font-size:13px;
+  }
+  .achat-item:last-child{border-bottom:none;}
+  .achat-tag{
+    font-size:11px; font-weight:600; padding:3px 8px; border-radius:100px; margin-left:8px;
+  }
+  .achat-tag.pro{background:rgba(108,156,255,0.15); color:var(--info);}
+  .achat-tag.perso{background:rgba(242,177,52,0.15); color:var(--warn);}
+
+  .confirm-banner{
+    display:none; background:rgba(69,194,133,0.12); border:1px solid var(--ok);
+    color:var(--ok); font-size:13px; padding:12px 14px; border-radius:9px; margin-bottom:16px;
+    text-align:center;
+  }
+</style>
+</head>
+<body>
+
+<div class="phone">
+
+  <!-- ÉCRAN DE CONNEXION -->
+  <div class="screen active" id="screen-login">
+    <div class="login-brand">
+      <div class="logo-upload-box" style="width:64px; height:64px; margin:0 auto 14px;" data-logo-slot>
+        <img alt="Logo">
+        <span class="logo-placeholder">+ Logo</span>
+      </div>
+      <div class="login-brand-name">Transports A.Blondel</div>
+      <div class="login-brand-sub">Espace chauffeur</div>
+    </div>
+    <div class="field">
+      <label>Identifiant</label>
+      <input type="text" id="login-user" placeholder="ex. n.lebreau" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Mot de passe</label>
+      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn-primary" id="btn-login">Se connecter</button>
+    <div class="login-error" id="login-error">Identifiant ou mot de passe incorrect.</div>
+    <div class="login-note">Réservé aux chauffeurs de Transports A.Blondel.<br>Chaque compte ne donne accès qu'à ses propres missions.</div>
+  </div>
+
+  <!-- ÉCRAN PERSONNEL DU CHAUFFEUR -->
+  <div class="screen" id="screen-home">
+    <div class="topbar">
+      <div class="avatar" id="home-avatar">NL</div>
+      <div>
+        <div class="topbar-name" id="home-name">Nathan Lebreau</div>
+        <div class="topbar-date">Dimanche 6 septembre 2026</div>
+      </div>
+      <button class="btn-logout" id="btn-logout">Déconnexion</button>
+    </div>
+
+    <div class="home-content">
+      <div class="confirm-banner" id="confirm-banner">Clôture envoyée au modérateur ✓</div>
+
+      <div class="mobile-view active" id="mobile-view-accueil">
+        <div class="card">
+          <div class="card-title">Ma journée</div>
+          <div class="mission-row"><span class="mission-label">Statut</span><span class="mission-value" id="journee-statut">Pas encore démarrée</span></div>
+          <button class="btn-secondary" id="btn-demarrer-journee">▶️ Démarrer la journée</button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Mon véhicule</div>
+          <div class="mission-row"><span class="mission-label">Tracteur attribué</span><span class="mission-value mono" id="home-tracteur">—</span></div>
+          <div class="field" style="margin-top:12px;">
+            <label>Changer de tracteur</label>
+            <select id="select-nouveau-tracteur">
+              <option>Non attribué</option>
+            </select>
+          </div>
+
+          <div class="mission-row" style="margin-top:16px;"><span class="mission-label">Remorque attribuée</span><span class="mission-value mono" id="home-remorque">—</span></div>
+          <div class="field" style="margin-top:12px;">
+            <label>Changer de remorque</label>
+            <select id="select-nouvelle-remorque">
+              <option value="Aucune remorque">Aucune remorque</option>
+            </select>
+          </div>
+
+          <button class="btn-secondary" id="btn-changer-vehicule">Valider le changement</button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Kilométrage départ</div>
+          <div class="mission-row"><span class="mission-label">Enregistré</span><span class="mission-value mono" id="km-depart-affiche">Non renseigné</span></div>
+          <div class="file-name">Renseigné via « Démarrer la journée » ci-dessus.</div>
+        </div>
+      </div>
+
+      <div class="mobile-view" id="mobile-view-mission">
+        <div class="card">
+          <div class="card-title">Ma mission du jour</div>
+          <div class="mission-row"><span class="mission-label">Trajet</span><span class="mission-value" id="home-trajet">—</span></div>
+          <div class="mission-row"><span class="mission-label">Heure de départ</span><span class="mission-value mono" id="home-heure">—</span></div>
+          <div class="mission-row"><span class="mission-label">Client</span><span class="mission-value" id="home-client">—</span></div>
+          <div class="mission-row"><span class="mission-label">Chef de chantier</span><span class="mission-value" id="home-chef">—</span></div>
+          <div class="mission-row"><span class="mission-label">Statut</span><span class="mission-value" id="mission-acceptation-statut">En attente d'acceptation</span></div>
+          <div class="file-name">L'acceptation se fait via « Démarrer la journée » sur l'onglet Accueil.</div>
+          <button class="btn-secondary" id="btn-creer-mission">+ Créer une mission</button>
+        </div>
+      </div>
+
+      <div class="mobile-view" id="mobile-view-plein">
+        <div class="card">
+          <div class="card-title">Plein carburant</div>
+          <div class="plein-tabs">
+            <button class="plein-tab active" data-plein-tab="gazoil">Gazoil</button>
+            <button class="plein-tab" data-plein-tab="adblue">AdBlue</button>
+          </div>
+          <div class="plein-panel active" id="panel-gazoil">
+            <div class="field-row">
+              <div class="field">
+                <label>Date</label>
+                <input type="date" id="gazoil-date">
+              </div>
+              <div class="field">
+                <label>Véhicule</label>
+                <select id="gazoil-vehicule">
+                  <option>Non attribué</option>
+                </select>
+              </div>
+            </div>
+            <div class="field">
+              <label>Kilométrage au compteur</label>
+              <input type="text" id="gazoil-km" placeholder="ex. 82 500">
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label>Litres</label>
+                <input type="text" id="gazoil-litres" placeholder="ex. 220">
+              </div>
+              <div class="field">
+                <label>Prix total</label>
+                <input type="text" id="gazoil-prix" placeholder="ex. 350,00 €">
+              </div>
+            </div>
+            <button class="btn-secondary" id="btn-plein-gazoil">Enregistrer le plein gazoil</button>
+          </div>
+          <div class="plein-panel" id="panel-adblue">
+            <div class="field-row">
+              <div class="field">
+                <label>Date</label>
+                <input type="date" id="adblue-date">
+              </div>
+              <div class="field">
+                <label>Véhicule</label>
+                <select id="adblue-vehicule">
+                  <option>Non attribué</option>
+                </select>
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label>Litres</label>
+                <input type="text" id="adblue-litres" placeholder="ex. 10">
+              </div>
+              <div class="field">
+                <label>Prix total</label>
+                <input type="text" id="adblue-prix" placeholder="ex. 15,00 €">
+              </div>
+            </div>
+            <button class="btn-secondary" id="btn-plein-adblue">Enregistrer le plein AdBlue</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="mobile-view" id="mobile-view-achats">
+        <div class="card">
+          <div class="card-title">Déclarer un achat</div>
+          <div class="plein-tabs">
+            <button class="plein-tab active" data-achat-tab="pro">Achat pro</button>
+            <button class="plein-tab" data-achat-tab="perso">Achat perso</button>
+          </div>
+          <div class="plein-panel active" id="panel-achat-pro">
+            <div class="field">
+              <label>Date</label>
+              <input type="date" id="achat-pro-date">
+            </div>
+            <div class="field">
+              <label>Description</label>
+              <input type="text" id="achat-pro-description" placeholder="ex. Lavage utilitaire, fournitures...">
+            </div>
+            <div class="field">
+              <label>Montant</label>
+              <input type="text" id="achat-pro-montant" placeholder="ex. 12,50 €">
+            </div>
+            <button class="btn-secondary" id="btn-achat-pro">Enregistrer l'achat professionnel</button>
+          </div>
+          <div class="plein-panel" id="panel-achat-perso">
+            <div class="field">
+              <label>Date</label>
+              <input type="date" id="achat-perso-date">
+            </div>
+            <div class="field">
+              <label>Description</label>
+              <input type="text" id="achat-perso-description" placeholder="ex. Achat personnel avec la carte">
+            </div>
+            <div class="field">
+              <label>Montant</label>
+              <input type="text" id="achat-perso-montant" placeholder="ex. 8,00 €">
+            </div>
+            <button class="btn-secondary" id="btn-achat-perso">Enregistrer l'achat personnel</button>
+            <div class="file-name" style="margin-top:10px;">Visible par le modérateur pour régularisation.</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Mes achats déclarés aujourd'hui</div>
+          <div id="achats-liste">
+            <div class="file-name">Aucun achat déclaré pour l'instant.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mobile-view" id="mobile-view-cloture">
+        <div class="card">
+          <div class="card-title">Mission du jour</div>
+          <div class="mission-row"><span class="mission-label">Statut</span><span class="mission-value" id="mission-valide-statut">Non validée</span></div>
+          <button class="btn-secondary" id="btn-valider-mission">✅ Valider la mission réalisée avec succès</button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Clôturer ma journée — indemnités</div>
+          <div class="frais-row">
+            <input type="checkbox" class="home-frais" data-montant="8.87">
+            <span class="frais-label">Casse-croûte</span>
+            <span class="frais-montant">8,87 €</span>
+          </div>
+          <div class="frais-row">
+            <input type="checkbox" class="home-frais" data-montant="9.81">
+            <span class="frais-label">Repas unique de nuit</span>
+            <span class="frais-montant">9,81 €</span>
+          </div>
+          <div class="frais-row">
+            <input type="checkbox" class="home-frais" data-montant="16.36">
+            <span class="frais-label">Repas</span>
+            <span class="frais-montant">16,36 €</span>
+          </div>
+          <div class="frais-row">
+            <input type="checkbox" class="home-frais" data-montant="52.31">
+            <span class="frais-label">Petit découché</span>
+            <span class="frais-montant">52,31 €</span>
+          </div>
+          <div class="frais-row">
+            <input type="checkbox" class="home-frais" data-montant="68.67">
+            <span class="frais-label">Grand découché</span>
+            <span class="frais-montant">68,67 €</span>
+          </div>
+          <div class="total-row">
+            <span class="mission-label">Total</span>
+            <span class="total-value" id="home-total">0,00 €</span>
+          </div>
+          <button class="btn-secondary" id="btn-cloturer">Envoyer ma clôture de journée</button>
+        </div>
+      </div>
+
+      <div class="mobile-view" id="mobile-view-administratif">
+        <div class="card">
+          <div class="card-title">Mes documents</div>
+          <div class="doc-row">
+            <div class="doc-name">Carte d'identité</div>
+            <div id="doc-carteIdentite"></div>
+          </div>
+          <div class="doc-row">
+            <div class="doc-name">Permis de conduire</div>
+            <div id="doc-permis"></div>
+          </div>
+          <div class="doc-row">
+            <div class="doc-name">Passeport</div>
+            <div id="doc-passeport"></div>
+          </div>
+          <div class="doc-row">
+            <div class="doc-name">Carte conducteur</div>
+            <div id="doc-carteConducteur"></div>
+          </div>
+          <div class="doc-row">
+            <div class="doc-name">Carte chronotachygraphe</div>
+            <div id="doc-chronotachygraphe"></div>
+          </div>
+          <div class="doc-row">
+            <div class="doc-name">ADR</div>
+            <div id="doc-adr"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom-nav">
+      <button class="bottom-nav-item active" data-mobile-view="accueil">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9a1 1 0 0 0 1 1h3v-5h4v5h3a1 1 0 0 0 1-1v-9"/></svg></span>
+        Accueil
+      </button>
+      <button class="bottom-nav-item" data-mobile-view="mission">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="1.5"/><path d="M9 3.5h6a1 1 0 0 1 1 1V6H8V4.5a1 1 0 0 1 1-1Z"/><path d="M8.5 11h7M8.5 14.5h7M8.5 18h4"/></svg></span>
+        Mission
+      </button>
+      <button class="bottom-nav-item" data-mobile-view="plein">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M5 20V6a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v14"/><path d="M4 20h11"/><path d="M14 10.5h2.2L19 13v5.2a1 1 0 0 1-1 1H17"/><circle cx="17.5" cy="18" r="1.3"/><path d="M8 4v3"/></svg></span>
+        Plein
+      </button>
+      <button class="bottom-nav-item" data-mobile-view="achats">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M6 8h12l-1 12.5a1 1 0 0 1-1 .9H8a1 1 0 0 1-1-.9L6 8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg></span>
+        Achats
+      </button>
+      <button class="bottom-nav-item" data-mobile-view="cloture">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.3l2.3 2.3 4.7-5"/></svg></span>
+        Clôture
+      </button>
+      <button class="bottom-nav-item" data-mobile-view="administratif">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="2"/><circle cx="8.5" cy="11" r="2"/><path d="M5.5 16c0-1.7 1.5-2.8 3-2.8s3 1.1 3 2.8"/><path d="M14.5 10h4M14.5 13h4"/></svg></span>
+        Admin.
+      </button>
+    </div>
+  </div>
+
+  <div class="mobile-modal-overlay" id="modal-demarrer-journee-overlay">
+    <div class="mobile-modal">
+      <!-- Étape 1 : kilométrage départ -->
+      <div id="etape-km-depart">
+        <div class="mobile-modal-head">
+          <div>
+            <div class="mobile-modal-head-title">Kilométrage départ</div>
+            <div class="mobile-modal-head-sub" id="demarrer-tracteur-nom">Véhicule moteur —</div>
+          </div>
+          <button class="mobile-modal-close" id="modal-demarrer-close-1">✕</button>
+        </div>
+        <div class="mobile-modal-body">
+          <div class="field">
+            <label>Kilométrage au compteur (ce matin)</label>
+            <input type="text" id="demarrer-km-depart" placeholder="ex. 82 500">
+          </div>
+        </div>
+        <div class="mobile-modal-foot">
+          <button class="btn-primary" id="btn-valider-km-demarrer">Valider le kilométrage</button>
+        </div>
+      </div>
+
+      <!-- Étape 2 : acceptation de la mission -->
+      <div id="etape-accepter-mission" style="display:none;">
+        <div class="mobile-modal-head">
+          <div>
+            <div class="mobile-modal-head-title">Accepter la mission</div>
+            <div class="mobile-modal-head-sub">Kilométrage enregistré ✓</div>
+          </div>
+          <button class="mobile-modal-close" id="modal-demarrer-close-2">✕</button>
+        </div>
+        <div class="mobile-modal-body">
+          <div class="detail-row"><span class="detail-label">Trajet</span><span class="detail-value" id="demarrer-trajet">—</span></div>
+          <div class="detail-row"><span class="detail-label">Client</span><span class="detail-value" id="demarrer-client">—</span></div>
+          <div class="detail-row"><span class="detail-label">Heure de départ</span><span class="detail-value" id="demarrer-heure">—</span></div>
+        </div>
+        <div class="mobile-modal-foot">
+          <button class="btn-primary" id="btn-valider-accepter-mission">✅ Accepter la mission</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mobile-modal-overlay" id="modal-tours-overlay">
+    <div class="mobile-modal">
+      <div class="mobile-modal-head">
+        <div class="mobile-modal-head-title">Valider la mission</div>
+        <div class="mobile-modal-head-sub">Indiquez le nombre de tours réalisés aujourd'hui</div>
+      </div>
+      <div class="mobile-modal-body">
+        <div class="field">
+          <label>Nombre de tours réalisés</label>
+          <input type="number" id="nombre-tours" min="0" placeholder="ex. 3">
+        </div>
+        <div class="field">
+          <label>Kilométrage arrivée (ce soir)</label>
+          <input type="text" id="km-arrivee" placeholder="ex. 82 950">
+        </div>
+        <div class="field">
+          <label>Remarque (optionnel)</label>
+          <input type="text" id="remarque-mission" placeholder="ex. attente au déchargement, accès difficile...">
+        </div>
+      </div>
+      <div class="mobile-modal-foot">
+        <button class="btn-ghost" id="modal-tours-annuler">Annuler</button>
+        <button class="btn-primary" id="modal-tours-confirmer">Valider</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mobile-modal-overlay" id="modal-creer-mission-overlay">
+    <div class="mobile-modal">
+      <div class="mobile-modal-head">
+        <div class="mobile-modal-head-title">Créer une mission</div>
+        <div class="mobile-modal-head-sub">À utiliser en cas d'imprévu, sans attendre le modérateur</div>
+      </div>
+      <div class="mobile-modal-body">
+        <div class="field">
+          <label>Trajet</label>
+          <input type="text" id="nouvelle-mission-trajet" placeholder="ex. Oradour → Limoges">
+        </div>
+        <div class="field">
+          <label>Heure de départ</label>
+          <input type="time" id="nouvelle-mission-heure">
+        </div>
+        <div class="field">
+          <label>Client</label>
+          <input type="text" id="nouvelle-mission-client" placeholder="Nom du client">
+        </div>
+        <div class="field">
+          <label>Chef de chantier</label>
+          <input type="text" id="nouvelle-mission-chef" placeholder="Nom et téléphone (optionnel)">
+        </div>
+      </div>
+      <div class="mobile-modal-foot">
+        <button class="btn-ghost" id="modal-creer-mission-annuler">Annuler</button>
+        <button class="btn-primary" id="modal-creer-mission-confirmer">Créer la mission</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Gestion du logo personnalisé : mémorisé dans le navigateur (localStorage), partagé entre tous les emplacements
+  (function initLogoPersonnalise() {
+    const CLE_STOCKAGE = 'logoPersonnaliseBlondel';
+    const inputFichier = document.createElement('input');
+    inputFichier.type = 'file';
+    inputFichier.accept = 'image/*';
+    inputFichier.style.display = 'none';
+    document.body.appendChild(inputFichier);
+
+    function appliquerLogo(dataUrl) {
+      document.querySelectorAll('[data-logo-slot]').forEach(boite => {
+        const img = boite.querySelector('img');
+        const placeholder = boite.querySelector('.logo-placeholder');
+        if (dataUrl) {
+          img.src = dataUrl;
+          img.style.display = 'block';
+          if (placeholder) placeholder.style.display = 'none';
+        } else {
+          img.style.display = 'none';
+          if (placeholder) placeholder.style.display = 'block';
+        }
+      });
+    }
+
+    const logoExistant = localStorage.getItem(CLE_STOCKAGE);
+    if (logoExistant) appliquerLogo(logoExistant);
+
+    document.querySelectorAll('[data-logo-slot]').forEach(boite => {
+      boite.addEventListener('click', () => inputFichier.click());
+    });
+
+    inputFichier.addEventListener('change', () => {
+      const fichier = inputFichier.files[0];
+      if (!fichier) return;
+      const lecteur = new FileReader();
+      lecteur.onload = (e) => {
+        localStorage.setItem(CLE_STOCKAGE, e.target.result);
+        appliquerLogo(e.target.result);
+      };
+      lecteur.readAsDataURL(fichier);
+    });
+  })();
+
+  // Comptes et données propres à chaque chauffeur — un compte ne voit QUE ses propres données.
+  const comptes = {
+    'n.lebreau': {
+      motdepasse: 'nathan2026',
+      nom: 'Nathan Lebreau', avatar: 'NL',
+      trajet: '', heure: '',
+      client: '', chef: '',
+      tracteur: 'Non attribué', remorque: 'Aucune remorque',
+      documents: {
+        carteIdentite: '',
+        permis: '',
+        passeport: '',
+        carteConducteur: '',
+        chronotachygraphe: '',
+        adr: ''
+      }
+    },
+    'd.brun': {
+      motdepasse: 'damien2026',
+      nom: 'Damien Brun', avatar: 'DB',
+      trajet: '', heure: '',
+      client: '', chef: '',
+      tracteur: 'Non attribué', remorque: 'Aucune remorque',
+      documents: {
+        carteIdentite: '',
+        permis: '',
+        passeport: '',
+        carteConducteur: '',
+        chronotachygraphe: '',
+        adr: ''
+      }
+    },
+    'a.blondel': {
+      motdepasse: 'adrien2026',
+      nom: 'Adrien Blondel', avatar: 'AB',
+      trajet: '', heure: '',
+      client: '', chef: '',
+      tracteur: 'Non attribué', remorque: 'Aucune remorque',
+      documents: {
+        carteIdentite: '',
+        permis: '',
+        passeport: '',
+        carteConducteur: '',
+        chronotachygraphe: '',
+        adr: ''
+      }
+    }
+  };
+
+  // Adresse du backend réel. En local (voir README du dossier backend/) : http://127.0.0.1:5050/api
+  // Si l'API n'est pas joignable, l'app bascule automatiquement sur les comptes de démonstration ci-dessous.
+  const API_URL = 'https://transports-blondel-backend.onrender.com/api';
+  let authToken = null;
+
+  // Ajoute un délai maximum à une requête sans utiliser AbortSignal (incompatible dans certains environnements)
+  function fetchAvecDelai(url, options = {}, delaiMs = 60000) {
+    return Promise.race([
+      fetch(url, options),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Délai dépassé — le serveur ne répond pas')), delaiMs))
+    ]);
+  }
+
+  async function appelApi(chemin, options = {}) {
+    if (!authToken) return null;
+    try {
+      const reponse = await fetch(`${API_URL}${chemin}`, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+          ...(options.headers || {})
+        }
+      });
+      if (!reponse.ok) return null;
+      const texte = await reponse.text();
+      return texte ? JSON.parse(texte) : {};
+    } catch (e) {
+      return null;
+    }
+  }
+
+  const screens = document.querySelectorAll('.screen');
+  let compteActuel = null;
+
+  function calculerChipEcheance(dateISO) {
+    const aujourdhui = new Date();
+    aujourdhui.setHours(0, 0, 0, 0);
+    const cible = new Date(dateISO + 'T00:00:00');
+    const jours = Math.round((cible - aujourdhui) / (1000 * 60 * 60 * 24));
+    const dateAffichee = cible.toLocaleDateString('fr-FR');
+    if (jours < 0) {
+      return `<span class="chip danger"><span class="chip-dot"></span> Expiré depuis le ${dateAffichee}</span>`;
+    } else if (jours <= 30) {
+      return `<span class="chip danger"><span class="chip-dot"></span> Urgent — ${jours} j (${dateAffichee})</span>`;
+    } else if (jours <= 60) {
+      return `<span class="chip warn"><span class="chip-dot"></span> À renouveler — ${jours} j (${dateAffichee})</span>`;
+    }
+    return `<span class="chip ok"><span class="chip-dot"></span> Valide jusqu'au ${dateAffichee}</span>`;
+  }
+
+  function showScreen(id){
+    screens.forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  function afficherEspacePersonnel(compte) {
+    compteActuel = compte;
+    document.getElementById('home-avatar').textContent = compte.avatar;
+    document.getElementById('home-name').textContent = compte.nom;
+    document.getElementById('home-trajet').textContent = compte.trajet || 'Aucune mission assignée';
+    document.getElementById('home-heure').textContent = compte.heure || '—';
+    document.getElementById('home-client').textContent = compte.client || '—';
+    document.getElementById('home-chef').textContent = compte.chef || '—';
+    document.getElementById('home-tracteur').textContent = compte.tracteur;
+    document.getElementById('select-nouveau-tracteur').value = compte.tracteur;
+    document.getElementById('home-remorque').textContent = compte.remorque;
+    document.getElementById('select-nouvelle-remorque').value = compte.remorque;
+    document.getElementById('confirm-banner').style.display = 'none';
+    document.querySelectorAll('.home-frais').forEach(cb => cb.checked = false);
+    updateHomeTotal();
+    missionValidee = false;
+    nombreToursRealises = null;
+    kmArrivee = '';
+    remarqueMission = '';
+    btnValiderMission.classList.remove('validated');
+    btnValiderMission.textContent = '✅ Valider la mission réalisée avec succès';
+    document.getElementById('mission-valide-statut').textContent = 'Non validée';
+    missionAcceptee = false;
+    journeeDemarree = false;
+    document.getElementById('mission-acceptation-statut').textContent = "En attente d'acceptation";
+    document.getElementById('journee-statut').textContent = 'Pas encore démarrée';
+    document.getElementById('btn-demarrer-journee').classList.remove('validated');
+    document.getElementById('btn-demarrer-journee').textContent = '▶️ Démarrer la journée';
+
+    // Reprise automatique du kilométrage départ si le tracteur n'a pas changé depuis la veille
+    if (compte.dernierKmArrivee && compte.dernierTracteurUtilise === compte.tracteur) {
+      kmDepart = compte.dernierKmArrivee;
+      document.getElementById('km-depart-affiche').textContent = kmDepart + ' km (repris automatiquement de la veille)';
+    } else {
+      kmDepart = null;
+      document.getElementById('km-depart-affiche').textContent = 'Non renseigné';
+    }
+
+    // Statuts des documents administratifs (même seuils que le contrôle technique côté modérateur)
+    Object.entries(compte.documents || {}).forEach(([cle, dateISO]) => {
+      const cell = document.getElementById('doc-' + cle);
+      if (cell) cell.innerHTML = calculerChipEcheance(dateISO);
+    });
+
+    document.querySelectorAll('.bottom-nav-item').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.mobile-view').forEach(v => v.classList.remove('active'));
+    document.querySelector('.bottom-nav-item[data-mobile-view="accueil"]').classList.add('active');
+    document.getElementById('mobile-view-accueil').classList.add('active');
+    showScreen('screen-home');
+  }
+
+  // Construit un "compte" affichable à partir des vraies données de l'API (chauffeur + sa mission du jour)
+  async function chargerCompteDepuisAPI(chauffeurApi, missionsApi) {
+    const missionActive = missionsApi.find(m => !m.realisee) || null;
+    return {
+      nom: chauffeurApi.nom_complet,
+      avatar: chauffeurApi.nom_complet.split(' ').map(p => p[0]).join('').toUpperCase(),
+      trajet: missionActive ? (missionActive.adresse || missionActive.client || '') : '',
+      heure: missionActive ? missionActive.heure_depart : '',
+      client: missionActive ? missionActive.client : '',
+      chef: missionActive ? missionActive.chef_de_chantier : '',
+      tracteur: chauffeurApi.tracteur_immat || 'Non attribué',
+      remorque: chauffeurApi.remorque_immat || 'Aucune remorque',
+      documents: {}, // les documents détaillés par chauffeur nécessitent un endpoint dédié côté chauffeur (à ajouter)
+      chauffeurId: chauffeurApi.id,
+      tracteurId: chauffeurApi.tracteur_id || null,
+      missionId: missionActive ? missionActive.id : null
+    };
+  }
+
+  // Peuple les menus "Changer de tracteur/remorque" avec la vraie flotte, et présélectionne le véhicule actuel
+  function peuplerMenusVehicules(tracteursFlotte, remorquesFlotte, compte) {
+    const selectTracteur = document.getElementById('select-nouveau-tracteur');
+    selectTracteur.innerHTML = '<option value="">Non attribué</option>';
+    (tracteursFlotte || []).forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t.id;
+      opt.textContent = t.immatriculation;
+      if (compte.tracteurId && t.id === compte.tracteurId) opt.selected = true;
+      selectTracteur.appendChild(opt);
+    });
+
+    const selectRemorque = document.getElementById('select-nouvelle-remorque');
+    selectRemorque.innerHTML = '<option value="">Aucune remorque</option>';
+    (remorquesFlotte || []).forEach(r => {
+      const opt = document.createElement('option');
+      opt.value = r.id;
+      opt.textContent = r.immatriculation;
+      selectRemorque.appendChild(opt);
+    });
+  }
+
+  document.getElementById('btn-login').addEventListener('click', async () => {
+    const user = document.getElementById('login-user').value.trim().toLowerCase();
+    const pass = document.getElementById('login-pass').value;
+    const errorEl = document.getElementById('login-error');
+    const btnLoginChauffeur = document.getElementById('btn-login');
+    const texteOriginalBtn = btnLoginChauffeur.textContent;
+    btnLoginChauffeur.disabled = true;
+    btnLoginChauffeur.textContent = 'Connexion… (jusqu\'à 1 min si le serveur était en veille)';
+    errorEl.style.display = 'none';
+
+    try {
+
+    // 1) Essaye d'abord la vraie API
+    try {
+      const reponseLogin = await fetchAvecDelai(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifiant: user, mot_de_passe: pass })
+      });
+      if (reponseLogin.ok) {
+        const { token, role } = await reponseLogin.json();
+        if (role !== 'chauffeur') {
+          errorEl.textContent = "Ce compte n'est pas un compte chauffeur.";
+          errorEl.style.display = 'block';
+          return;
+        }
+        authToken = token;
+        const [reponseMoi, reponseMissions, reponseTracteurs, reponseRemorques] = await Promise.all([
+          fetchAvecDelai(`${API_URL}/chauffeurs/me`, { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetchAvecDelai(`${API_URL}/missions`, { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetchAvecDelai(`${API_URL}/tracteurs`, { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetchAvecDelai(`${API_URL}/remorques`, { headers: { 'Authorization': `Bearer ${token}` } })
+        ]);
+        const missions = await reponseMissions.json();
+        const tracteursFlotte = await reponseTracteurs.json();
+        const remorquesFlotte = await reponseRemorques.json();
+        // Fiabilisé : /api/chauffeurs/me renvoie exactement et uniquement la fiche du compte connecté,
+        // il ne peut donc jamais afficher les données d'un autre chauffeur, même s'il y en a plusieurs.
+        if (reponseMoi.ok) {
+          const monChauffeur = await reponseMoi.json();
+          errorEl.style.display = 'none';
+          const compte = await chargerCompteDepuisAPI(monChauffeur, missions);
+          afficherEspacePersonnel(compte);
+          peuplerMenusVehicules(tracteursFlotte, remorquesFlotte, compte);
+          showBanner('Connecté au serveur réel ✓');
+          return;
+        }
+      }
+    } catch (e) {
+      // API injoignable (backend non lancé) : on bascule sur les comptes de démonstration ci-dessous
+      console.info('API backend injoignable, bascule en mode démonstration local.', e.message);
+    }
+
+    // 2) Repli : comptes de démonstration en mémoire (aucun backend requis pour tester la maquette)
+    const compte = comptes[user];
+    if (compte && compte.motdepasse === pass) {
+      errorEl.style.display = 'none';
+      afficherEspacePersonnel(compte);
+    } else {
+      errorEl.textContent = 'Identifiant ou mot de passe incorrect.';
+      errorEl.style.display = 'block';
+    }
+
+    } finally {
+      btnLoginChauffeur.disabled = false;
+      btnLoginChauffeur.textContent = texteOriginalBtn;
+    }
+  });
+
+  document.getElementById('btn-logout').addEventListener('click', () => {
+    document.getElementById('login-user').value = '';
+    document.getElementById('login-pass').value = '';
+    showScreen('screen-login');
+  });
+
+  function updateHomeTotal(){
+    let total = 0;
+    document.querySelectorAll('.home-frais').forEach(cb => {
+      if (cb.checked) total += parseFloat(cb.dataset.montant);
+    });
+    document.getElementById('home-total').textContent =
+      total.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+  }
+  document.querySelectorAll('.home-frais').forEach(cb => {
+    cb.addEventListener('change', updateHomeTotal);
+  });
+
+  // --- Démarrer la journée : étape 1 (km départ) puis étape 2 (accepter la mission) ---
+  let missionAcceptee = false;
+  let journeeDemarree = false;
+
+  function fonctionMissionValide() {
+    const trajet = document.getElementById('home-trajet').textContent;
+    return trajet && trajet !== 'Aucune mission assignée';
+  }
+
+  function accepterMissionInterne() {
+    missionAcceptee = true;
+    document.getElementById('mission-acceptation-statut').textContent = 'Acceptée par le chauffeur';
+  }
+
+  const demarrerOverlay = document.getElementById('modal-demarrer-journee-overlay');
+  const etapeKm = document.getElementById('etape-km-depart');
+  const etapeAccepter = document.getElementById('etape-accepter-mission');
+
+  function fermerDemarrerOverlay() {
+    demarrerOverlay.classList.remove('active');
+  }
+
+  document.getElementById('btn-demarrer-journee').addEventListener('click', () => {
+    if (journeeDemarree) {
+      showBanner('Journée déjà démarrée ✓');
+      return;
+    }
+    document.getElementById('demarrer-tracteur-nom').textContent = 'Véhicule moteur — ' + document.getElementById('home-tracteur').textContent;
+    document.getElementById('demarrer-km-depart').value = kmDepart || '';
+    etapeKm.style.display = 'block';
+    etapeAccepter.style.display = 'none';
+    demarrerOverlay.classList.add('active');
+  });
+  document.getElementById('modal-demarrer-close-1').addEventListener('click', fermerDemarrerOverlay);
+  document.getElementById('modal-demarrer-close-2').addEventListener('click', fermerDemarrerOverlay);
+  demarrerOverlay.addEventListener('click', (e) => { if (e.target === demarrerOverlay) fermerDemarrerOverlay(); });
+
+  document.getElementById('btn-valider-km-demarrer').addEventListener('click', async () => {
+    const valeur = document.getElementById('demarrer-km-depart').value.trim();
+    if (!valeur) return;
+    kmDepart = valeur;
+    document.getElementById('km-depart-affiche').textContent = kmDepart + ' km';
+
+    if (authToken) {
+      try {
+        await fetch(`${API_URL}/declarations/km-depart`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+          body: JSON.stringify({ km_depart: parseInt(valeur.replace(/[^\d]/g, ''), 10) })
+        });
+      } catch (e) { /* mode démonstration si l'API ne répond pas */ }
+    }
+
+    if (!fonctionMissionValide()) {
+      journeeDemarree = true;
+      document.getElementById('journee-statut').textContent = 'Kilométrage enregistré — aucune mission à accepter';
+      document.getElementById('btn-demarrer-journee').textContent = '✓ Journée démarrée';
+      document.getElementById('btn-demarrer-journee').classList.add('validated');
+      fermerDemarrerOverlay();
+      showBanner('Kilométrage départ enregistré ✓');
+      return;
+    }
+
+    document.getElementById('demarrer-trajet').textContent = document.getElementById('home-trajet').textContent;
+    document.getElementById('demarrer-client').textContent = document.getElementById('home-client').textContent;
+    document.getElementById('demarrer-heure').textContent = document.getElementById('home-heure').textContent;
+    etapeKm.style.display = 'none';
+    etapeAccepter.style.display = 'block';
+  });
+
+  document.getElementById('btn-valider-accepter-mission').addEventListener('click', async () => {
+    accepterMissionInterne();
+    journeeDemarree = true;
+    document.getElementById('journee-statut').textContent = 'Journée démarrée — mission acceptée';
+    document.getElementById('btn-demarrer-journee').textContent = '✓ Journée démarrée';
+    document.getElementById('btn-demarrer-journee').classList.add('validated');
+
+    if (authToken && compteActuel && compteActuel.missionId) {
+      try {
+        await fetch(`${API_URL}/missions/${compteActuel.missionId}/accepter`, {
+          method: 'PATCH',
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+      } catch (e) { /* mode démonstration si l'API ne répond pas */ }
+    }
+
+    fermerDemarrerOverlay();
+    showBanner('Kilométrage enregistré et mission acceptée ✓');
+  });
+
+  // --- Créer une mission (en cas d'imprévu) ---
+  const creerMissionOverlay = document.getElementById('modal-creer-mission-overlay');
+  document.getElementById('btn-creer-mission').addEventListener('click', () => {
+    document.getElementById('nouvelle-mission-trajet').value = '';
+    document.getElementById('nouvelle-mission-heure').value = '';
+    document.getElementById('nouvelle-mission-client').value = '';
+    document.getElementById('nouvelle-mission-chef').value = '';
+    creerMissionOverlay.classList.add('active');
+  });
+  document.getElementById('modal-creer-mission-annuler').addEventListener('click', () => {
+    creerMissionOverlay.classList.remove('active');
+  });
+  document.getElementById('modal-creer-mission-confirmer').addEventListener('click', () => {
+    const trajet = document.getElementById('nouvelle-mission-trajet').value.trim();
+    if (!trajet) return;
+    const heure = document.getElementById('nouvelle-mission-heure').value || '—';
+    const client = document.getElementById('nouvelle-mission-client').value.trim() || 'Non renseigné';
+    const chef = document.getElementById('nouvelle-mission-chef').value.trim() || 'Non renseigné';
+
+    document.getElementById('home-trajet').textContent = trajet;
+    document.getElementById('home-heure').textContent = heure;
+    document.getElementById('home-client').textContent = client;
+    document.getElementById('home-chef').textContent = chef;
+
+    missionAcceptee = false;
+    journeeDemarree = false;
+    document.getElementById('mission-acceptation-statut').textContent = "En attente d'acceptation";
+    document.getElementById('journee-statut').textContent = 'Nouvelle mission à accepter';
+    document.getElementById('btn-demarrer-journee').classList.remove('validated');
+    document.getElementById('btn-demarrer-journee').textContent = '▶️ Démarrer la journée';
+
+    creerMissionOverlay.classList.remove('active');
+    showBanner('Mission créée et envoyée au modérateur ✓');
+  });
+
+  // --- Validation de la mission du soir ---
+  let missionValidee = false;
+  let nombreToursRealises = null;
+  let kmArrivee = '';
+  let remarqueMission = '';
+  const btnValiderMission = document.getElementById('btn-valider-mission');
+  const toursOverlay = document.getElementById('modal-tours-overlay');
+
+  btnValiderMission.addEventListener('click', () => {
+    document.getElementById('nombre-tours').value = nombreToursRealises !== null ? nombreToursRealises : '';
+    document.getElementById('km-arrivee').value = kmArrivee;
+    document.getElementById('remarque-mission').value = remarqueMission;
+    toursOverlay.classList.add('active');
+  });
+
+  document.getElementById('modal-tours-annuler').addEventListener('click', () => {
+    toursOverlay.classList.remove('active');
+  });
+
+  document.getElementById('modal-tours-confirmer').addEventListener('click', async () => {
+    const valeur = document.getElementById('nombre-tours').value;
+    if (valeur === '' || parseInt(valeur, 10) < 0) return;
+    nombreToursRealises = parseInt(valeur, 10);
+    kmArrivee = document.getElementById('km-arrivee').value.trim();
+    remarqueMission = document.getElementById('remarque-mission').value.trim();
+    missionValidee = true;
+    const toursTexte = `${nombreToursRealises} tour${nombreToursRealises > 1 ? 's' : ''}`;
+
+    let kmJourTexte = '';
+    const departNum = kmDepart ? parseFloat(kmDepart.replace(/[^\d.]/g, '')) : null;
+    const arriveeNum = kmArrivee ? parseFloat(kmArrivee.replace(/[^\d.]/g, '')) : null;
+    if (departNum !== null && arriveeNum !== null && arriveeNum > departNum) {
+      kmJourTexte = (arriveeNum - departNum).toLocaleString('fr-FR') + ' km parcourus aujourd\'hui';
+    } else if (arriveeNum !== null && depNumMissing(departNum)) {
+      kmJourTexte = 'Kilométrage départ non renseigné — impossible de calculer la distance';
+    }
+
+    btnValiderMission.classList.add('validated');
+    btnValiderMission.textContent = `✓ Mission validée (${toursTexte})`;
+    document.getElementById('mission-valide-statut').innerHTML =
+      `Validée — ${toursTexte} réalisé${nombreToursRealises > 1 ? 's' : ''}` +
+      (kmArrivee ? `<br>Km arrivée : ${kmArrivee}` : '') +
+      (kmJourTexte ? `<br>${kmJourTexte}` : '') +
+      (remarqueMission ? `<br>Remarque : ${remarqueMission}` : '');
+    toursOverlay.classList.remove('active');
+
+    // Persistance réelle : km arrivée + validation de la mission (déclenche la facturation côté serveur)
+    if (authToken) {
+      try {
+        if (arriveeNum !== null) {
+          await fetch(`${API_URL}/declarations/km-arrivee`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+            body: JSON.stringify({ km_arrivee: arriveeNum })
+          });
+        }
+        if (compteActuel && compteActuel.missionId) {
+          await fetch(`${API_URL}/missions/${compteActuel.missionId}/valider`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+            body: JSON.stringify({ nombre_tours: nombreToursRealises, remarque: remarqueMission })
+          });
+        }
+      } catch (e) { /* mode démonstration si l'API ne répond pas */ }
+    }
+
+    // Mémorise le km d'arrivée et le tracteur utilisé pour la reprise automatique du lendemain
+    if (compteActuel && kmArrivee) {
+      compteActuel.dernierKmArrivee = kmArrivee;
+      compteActuel.dernierTracteurUtilise = document.getElementById('home-tracteur').textContent;
+    }
+  });
+
+  function depNumMissing(departNum) { return departNum === null; }
+
+  document.getElementById('btn-cloturer').addEventListener('click', async () => {
+    if (authToken) {
+      const cases = document.querySelectorAll('.home-frais');
+      const cles = ['casse_croute', 'repas_nuit', 'repas', 'petit_decouche', 'grand_decouche'];
+      const indemnites = {};
+      cases.forEach((c, i) => { indemnites[cles[i]] = c.checked; });
+      try {
+        await fetch(`${API_URL}/indemnites`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+          body: JSON.stringify(indemnites)
+        });
+      } catch (e) { /* mode démonstration si l'API ne répond pas */ }
+    }
+    showBanner(missionValidee
+      ? `Clôture envoyée au modérateur ✓ (mission validée — ${nombreToursRealises} tour${nombreToursRealises > 1 ? 's' : ''})`
+      : 'Clôture envoyée au modérateur ✓ (mission non validée)');
+  });
+
+  // --- Plein carburant : bascule Gazoil / AdBlue ---
+  document.querySelectorAll('[data-plein-tab]').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('[data-plein-tab]').forEach(t => t.classList.remove('active'));
+      document.getElementById('panel-gazoil').classList.remove('active');
+      document.getElementById('panel-adblue').classList.remove('active');
+      tab.classList.add('active');
+      document.getElementById('panel-' + tab.dataset.pleinTab).classList.add('active');
+    });
+  });
+
+  // --- Achats : bascule Pro / Perso ---
+  document.querySelectorAll('[data-achat-tab]').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('[data-achat-tab]').forEach(t => t.classList.remove('active'));
+      document.getElementById('panel-achat-pro').classList.remove('active');
+      document.getElementById('panel-achat-perso').classList.remove('active');
+      tab.classList.add('active');
+      document.getElementById('panel-achat-' + tab.dataset.achatTab).classList.add('active');
+    });
+  });
+
+  function showBanner(message) {
+    const banner = document.getElementById('confirm-banner');
+    banner.textContent = message;
+    banner.style.display = 'block';
+  }
+
+  // --- Enregistrement des achats ---
+  const achatsDuJour = [];
+  function rafraichirListeAchats() {
+    const listeEl = document.getElementById('achats-liste');
+    if (achatsDuJour.length === 0) {
+      listeEl.innerHTML = '<div class="file-name">Aucun achat déclaré pour l\'instant.</div>';
+      return;
+    }
+    listeEl.innerHTML = achatsDuJour.map(a => `
+      <div class="achat-item">
+        <span>${a.description || 'Sans description'} <span class="achat-tag ${a.type}">${a.type === 'pro' ? 'Pro' : 'Perso'}</span></span>
+        <span class="mono">${a.montant}</span>
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('btn-achat-pro').addEventListener('click', async () => {
+    const montant = document.getElementById('achat-pro-montant').value.trim();
+    if (!montant) return;
+    const description = document.getElementById('achat-pro-description').value.trim();
+    achatsDuJour.unshift({ type: 'pro', description, montant });
+    rafraichirListeAchats();
+    if (authToken) {
+      try {
+        await fetch(`${API_URL}/achats`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+          body: JSON.stringify({ type: 'pro', description, montant: parseFloat(montant.replace(',', '.')) || 0 })
+        });
+      } catch (e) { /* mode démonstration si l'API ne répond pas */ }
+    }
+    showBanner('Achat professionnel enregistré ✓');
+    document.getElementById('achat-pro-date').value = '';
+    document.getElementById('achat-pro-description').value = '';
+    document.getElementById('achat-pro-montant').value = '';
+  });
+
+  document.getElementById('btn-achat-perso').addEventListener('click', async () => {
+    const montant = document.getElementById('achat-perso-montant').value.trim();
+    if (!montant) return;
+    const description = document.getElementById('achat-perso-description').value.trim();
+    achatsDuJour.unshift({ type: 'perso', description, montant });
+    rafraichirListeAchats();
+    if (authToken) {
+      try {
+        await fetch(`${API_URL}/achats`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+          body: JSON.stringify({ type: 'perso', description, montant: parseFloat(montant.replace(',', '.')) || 0 })
+        });
+      } catch (e) { /* mode démonstration si l'API ne répond pas */ }
+    }
+    showBanner('Achat personnel envoyé au modérateur ✓');
+    document.getElementById('achat-perso-date').value = '';
+    document.getElementById('achat-perso-description').value = '';
+    document.getElementById('achat-perso-montant').value = '';
+  });
+
+  document.getElementById('btn-plein-gazoil').addEventListener('click', async () => {
+    if (authToken && compteActuel && compteActuel.tracteurId) {
+      const litres = document.getElementById('gazoil-litres').value.trim();
+      const km = document.getElementById('gazoil-km').value.trim();
+      const prix = document.getElementById('gazoil-prix').value.trim();
+      try {
+        await fetch(`${API_URL}/pleins`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+          body: JSON.stringify({
+            tracteur_id: compteActuel.tracteurId,
+            type_carburant: 'gazoil',
+            date_plein: document.getElementById('gazoil-date').value || new Date().toISOString().slice(0, 10),
+            kilometrage: parseInt(km.replace(/[^\d]/g, ''), 10) || null,
+            litres: parseFloat(litres.replace(',', '.')) || null,
+            prix_total: parseFloat(prix.replace(',', '.')) || null
+          })
+        });
+      } catch (e) { /* mode démonstration si l'API ne répond pas */ }
+    }
+    showBanner('Plein gazoil envoyé au modérateur ✓');
+    document.getElementById('gazoil-date').value = '';
+    document.getElementById('gazoil-km').value = '';
+    document.getElementById('gazoil-litres').value = '';
+    document.getElementById('gazoil-prix').value = '';
+  });
+
+  document.getElementById('btn-plein-adblue').addEventListener('click', async () => {
+    if (authToken && compteActuel && compteActuel.tracteurId) {
+      const litres = document.getElementById('adblue-litres').value.trim();
+      const prix = document.getElementById('adblue-prix').value.trim();
+      try {
+        await fetch(`${API_URL}/pleins`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+          body: JSON.stringify({
+            tracteur_id: compteActuel.tracteurId,
+            type_carburant: 'adblue',
+            date_plein: document.getElementById('adblue-date').value || new Date().toISOString().slice(0, 10),
+            litres: parseFloat(litres.replace(',', '.')) || null,
+            prix_total: parseFloat(prix.replace(',', '.')) || null
+          })
+        });
+      } catch (e) { /* mode démonstration si l'API ne répond pas */ }
+    }
+    showBanner('Plein AdBlue envoyé au modérateur ✓');
+    document.getElementById('adblue-date').value = '';
+    document.getElementById('adblue-litres').value = '';
+    document.getElementById('adblue-prix').value = '';
+  });
+
+  // --- Changer de tracteur et/ou de remorque ---
+  document.getElementById('btn-changer-vehicule').addEventListener('click', async () => {
+    const selectTracteur = document.getElementById('select-nouveau-tracteur');
+    const selectRemorque = document.getElementById('select-nouvelle-remorque');
+    const tracteurId = selectTracteur.value || null;
+    const remorqueId = selectRemorque.value || null;
+    const tracteurTexte = selectTracteur.selectedOptions[0] ? selectTracteur.selectedOptions[0].textContent : 'Non attribué';
+    const remorqueTexte = selectRemorque.selectedOptions[0] ? selectRemorque.selectedOptions[0].textContent : 'Aucune remorque';
+
+    document.getElementById('home-tracteur').textContent = tracteurTexte;
+    document.getElementById('home-remorque').textContent = remorqueTexte;
+    if (compteActuel) compteActuel.tracteurId = tracteurId ? parseInt(tracteurId, 10) : null;
+
+    if (authToken && compteActuel && compteActuel.chauffeurId) {
+      try {
+        await fetch(`${API_URL}/chauffeurs/${compteActuel.chauffeurId}/vehicule`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+          body: JSON.stringify({ tracteur_id: tracteurId, remorque_id: remorqueId })
+        });
+      } catch (e) { /* mode démonstration si l'API ne répond pas */ }
+    }
+    showBanner(`Changement enregistré — ${tracteurTexte} / ${remorqueTexte} ✓`);
+  });
+
+  // --- Kilométrage départ (matin) ---
+  let kmDepart = null;
+
+  // --- Barre de navigation basse ---
+  document.querySelectorAll('.bottom-nav-item').forEach(navBtn => {
+    navBtn.addEventListener('click', () => {
+      document.querySelectorAll('.bottom-nav-item').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.mobile-view').forEach(v => v.classList.remove('active'));
+      navBtn.classList.add('active');
+      document.getElementById('mobile-view-' + navBtn.dataset.mobileView).classList.add('active');
+    });
+  });
+</script>
+
+</body>
+</html>

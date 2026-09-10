@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transports A.Blondel</title>
+<style>
+  :root{
+    --bg: #0F1319;
+    --panel: #171C24;
+    --panel-2: #1E2530;
+    --line: #2A3140;
+    --text: #EDEFF2;
+    --text-dim: #8B94A3;
+    --accent: #3E6FBF;
+    --accent-2: #5C8ADD;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:
+      radial-gradient(1100px 600px at 15% -10%, rgba(62,111,191,0.07), transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, rgba(92,138,221,0.05), transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:'IBM Plex Sans', -apple-system, sans-serif;
+    min-height:100vh;
+    display:flex; align-items:center; justify-content:center;
+    padding:24px;
+  }
+  .conteneur{width:100%; max-width:720px; text-align:center;}
+  .brand-name{font-size:26px; font-weight:700; margin-bottom:6px;}
+  .brand-sub{font-size:14px; color:var(--text-dim); margin-bottom:40px;}
+  .grille{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px;}
+  .carte{
+    background:var(--panel); border:1px solid var(--line); border-radius:16px;
+    padding:32px 20px; text-decoration:none; color:var(--text);
+    transition:transform .15s ease, border-color .15s ease;
+    display:flex; flex-direction:column; align-items:center; gap:12px;
+  }
+  .carte:hover{transform:translateY(-3px); border-color:var(--accent);}
+  .carte-icone{
+    width:52px; height:52px; border-radius:14px;
+    background:linear-gradient(160deg, var(--accent-2), var(--accent));
+    display:flex; align-items:center; justify-content:center; font-size:24px;
+  }
+  .carte-titre{font-size:15px; font-weight:600;}
+  .carte-sub{font-size:12px; color:var(--text-dim);}
+  .pied{margin-top:40px; font-size:12px; color:var(--text-dim);}
+</style>
+</head>
+<body>
+  <div class="conteneur">
+    <div class="brand-name">Transports A.Blondel</div>
+    <div class="brand-sub">Choisissez votre espace</div>
+    <div class="grille">
+      <a class="carte" href="transport-dashboard.html">
+        <div class="carte-icone">💻</div>
+        <div class="carte-titre">Web modérateur</div>
+        <div class="carte-sub">Planning, véhicules, facturation...</div>
+      </a>
+      <a class="carte" href="app-mobile-chauffeur.html">
+        <div class="carte-icone">🚚</div>
+        <div class="carte-titre">App chauffeur</div>
+        <div class="carte-sub">Missions, pleins, indemnités</div>
+      </a>
+      <a class="carte" href="app-mobile-moderateur.html">
+        <div class="carte-icone">📱</div>
+        <div class="carte-titre">App modérateur mobile</div>
+        <div class="carte-sub">Suivi rapide depuis le téléphone</div>
+      </a>
+    </div>
+    <div class="pied">Astuce : ajoutez cette page à vos favoris ou à l'écran d'accueil de votre téléphone.</div>
+  </div>
+</body>
+</html>
