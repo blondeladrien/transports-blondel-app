@@ -2183,7 +2183,8 @@
       views.forEach(v => v.classList.remove('active'));
       document.getElementById('view-' + key).classList.add('active');
       title.textContent = labels[key];
-      if (key === 'cloture') updateTotalMois();
+      if (key === 'cloture') { updateTotalMois(); updateAchatsTotalMois(); }
+      if (key === 'achats-exceptionnels') updateAchatsProTotalMois();
     });
   });
 
@@ -2368,11 +2369,49 @@
   }
   updateTotalMois();
 
-  function updateAchatsTotalMois() {
+  async function updateAchatsTotalMois() {
     const periode = getPeriodeSelectionnee();
     document.getElementById('achats-titre-periode').textContent =
       `Achats personnels déclarés — ${MOIS_NOMS[periode.mois]} ${periode.annee}`;
+    const moisFormat = `${periode.annee}-${String(periode.mois + 1).padStart(2, '0')}`;
 
+    const achats = await appelApi(`/achats?type=perso&mois=${moisFormat}`);
+    const tbody = document.getElementById('achats-perso-tbody');
+
+    if (achats) {
+      const achatsFiltres = periode.chauffeur === 'tous' ? achats : achats.filter(a => a.chauffeur_nom === periode.chauffeur);
+      tbody.innerHTML = '';
+      let total = 0;
+      const parChauffeur = {};
+      achatsFiltres.forEach(a => {
+        total += a.montant;
+        parChauffeur[a.chauffeur_nom] = (parChauffeur[a.chauffeur_nom] || 0) + a.montant;
+        const dateAffichee = new Date(a.date_achat + 'T00:00:00').toLocaleDateString('fr-FR');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="mono">${dateAffichee}</td>
+          <td>${a.chauffeur_nom}</td>
+          <td>${a.description || '—'}</td>
+          <td class="mono">${a.montant.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €</td>
+        `;
+        tbody.appendChild(tr);
+      });
+      if (achatsFiltres.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="placeholder" style="padding:24px;">Aucun achat personnel déclaré pour cette période.</td></tr>';
+      }
+      document.getElementById('achats-total-mois').textContent =
+        total.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+      const detailEl = document.getElementById('achats-total-par-chauffeur');
+      detailEl.innerHTML = Object.entries(parChauffeur).map(([nom, montant]) => `
+        <div class="decl-row" style="padding:10px 18px;">
+          <span class="decl-label">${nom}</span>
+          <span class="decl-value mono">${montant.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span>
+        </div>
+      `).join('');
+      return;
+    }
+
+    // Repli local (mode démonstration, backend injoignable)
     let total = 0;
     const parChauffeur = {};
     document.querySelectorAll('#achats-perso-tbody tr').forEach(row => {
@@ -2405,7 +2444,43 @@
     updateAchatsTotalMois();
   });
 
-  function updateAchatsProTotalMois() {
+  async function updateAchatsProTotalMois() {
+    const achats = await appelApi('/achats?type=pro');
+    const tbody = document.getElementById('achats-pro-tbody');
+
+    if (achats) {
+      tbody.innerHTML = '';
+      let total = 0;
+      const parChauffeur = {};
+      achats.forEach(a => {
+        total += a.montant;
+        parChauffeur[a.chauffeur_nom] = (parChauffeur[a.chauffeur_nom] || 0) + a.montant;
+        const dateAffichee = new Date(a.date_achat + 'T00:00:00').toLocaleDateString('fr-FR');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="mono">${dateAffichee}</td>
+          <td>${a.chauffeur_nom}</td>
+          <td>${a.description || '—'}</td>
+          <td class="mono">${a.montant.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €</td>
+        `;
+        tbody.appendChild(tr);
+      });
+      if (achats.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="placeholder" style="padding:24px;">Aucun achat professionnel déclaré.</td></tr>';
+      }
+      document.getElementById('achats-pro-total-mois').textContent =
+        total.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+      const detailEl = document.getElementById('achats-pro-total-par-chauffeur');
+      detailEl.innerHTML = Object.entries(parChauffeur).map(([nom, montant]) => `
+        <div class="decl-row" style="padding:10px 18px;">
+          <span class="decl-label">${nom}</span>
+          <span class="decl-value mono">${montant.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span>
+        </div>
+      `).join('');
+      return;
+    }
+
+    // Repli local (mode démonstration, backend injoignable)
     let total = 0;
     const parChauffeur = {};
     document.querySelectorAll('#achats-pro-tbody tr').forEach(row => {
@@ -3562,6 +3637,8 @@
     if (apiDisponible) {
       await chargerDonneesInitiales();
       await updateTotalMois();
+      await updateAchatsTotalMois();
+      await updateAchatsProTotalMois();
     } else {
       afficherErreurApi('Backend non connecté — impossible de rafraîchir les données réelles.');
     }
