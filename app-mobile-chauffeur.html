@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Transports A.Blondel — Espace chauffeur</title>
+<link rel="manifest" href="manifest-chauffeur.json">
+<meta name="theme-color" content="#3E6FBF">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TB Chauffeur">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
   :root{
     --bg: #12161B;
@@ -1391,6 +1398,11 @@
     document.getElementById('login-pass').value = '';
     showScreen('screen-login');
   });
+
+  // Enregistrement du service worker (nécessaire pour l'installation en tant qu'app)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('service-worker.js').catch(() => {});
+  }
 </script>
 
 </body>
