@@ -1708,11 +1708,12 @@
   });
 
   async function chargerDonneesInitiales() {
-    const [chauffeurs, tracteurs, remorques, comptes] = await Promise.all([
+    const [chauffeurs, tracteurs, remorques, comptes, documentsChauffeurs] = await Promise.all([
       appelApi('/chauffeurs'),
       appelApi('/tracteurs'),
       appelApi('/remorques'),
-      appelApi('/utilisateurs')
+      appelApi('/utilisateurs'),
+      appelApi('/documents/chauffeurs')
     ]);
 
     if (chauffeurs && chauffeurs.length) {
@@ -1840,6 +1841,32 @@
         }
       });
     }
+
+    // Repeuple aussi automatiquement l'onglet Administratif, avec les dates déjà enregistrées
+    const DOC_CLES_INIT = ['carteIdentite', 'permis', 'passeport', 'carteConducteur', 'adr', 'chronotachygraphe'];
+    (chauffeurs || []).forEach(c => {
+      const row = creerLigneDocChauffeurSiAbsente(c.nom_complet);
+      const docs = (documentsChauffeurs || []).find(d => d.chauffeur_id === c.id);
+      if (docs) {
+        const correspondance = { carteIdentite: 'carte_identite', permis: 'permis', passeport: 'passeport', carteConducteur: 'carte_conducteur', adr: 'adr', chronotachygraphe: 'chronotachygraphe' };
+        DOC_CLES_INIT.forEach(cle => {
+          const cell = row.querySelector('.doc-cell-' + cle);
+          cell.dataset.date = docs[correspondance[cle]] || '';
+          updateDocCell(cell);
+        });
+      }
+    });
+    const DOC_VCLES_INIT = ['assurance', 'controletechnique', 'extincteur', 'chronotachygraphe', 'tachylimiteur'];
+    (tracteurs || []).forEach(t => {
+      const row = creerLigneDocVehiculeSiAbsente(t.immatriculation);
+      const correspondance = { assurance: 'date_assurance', controletechnique: 'date_controle_technique', extincteur: 'date_extincteur', chronotachygraphe: 'date_chronotachygraphe', tachylimiteur: 'date_tachylimiteur' };
+      DOC_VCLES_INIT.forEach(cle => {
+        const cell = row.querySelector('.doc-cell-' + cle);
+        cell.dataset.date = t[correspondance[cle]] || '';
+        updateDocCell(cell);
+      });
+    });
+    (remorques || []).forEach(r => creerLigneDocVehiculeSiAbsente(r.immatriculation));
 
     // Rafraîchit toutes les synthèses et filtres dépendants de ces listes
     updateSidebarCompteurs();
@@ -2979,6 +3006,48 @@
   document.getElementById('modal-add-chauffeur-close-2').addEventListener('click', closeAddChauffeurModal);
   addChauffeurOverlay.addEventListener('click', (e) => { if (e.target === addChauffeurOverlay) closeAddChauffeurModal(); });
 
+  function creerLigneDocChauffeurSiAbsente(nom) {
+    let row = document.querySelector(`#doc-chauffeurs-tbody tr[data-name="${CSS.escape(nom)}"]`);
+    if (row) return row;
+    const avatar = nom.split(' ').map(p => p[0]).join('').toUpperCase();
+    row = document.createElement('tr');
+    row.dataset.name = nom;
+    row.innerHTML = `
+      <td><div class="driver"><div class="avatar">${avatar}</div> ${nom}</div></td>
+      <td class="doc-cell doc-cell-carteIdentite"></td>
+      <td class="doc-cell doc-cell-permis"></td>
+      <td class="doc-cell doc-cell-passeport"></td>
+      <td class="doc-cell doc-cell-carteConducteur"></td>
+      <td class="doc-cell doc-cell-adr"></td>
+      <td class="doc-cell doc-cell-chronotachygraphe"></td>
+      <td><button class="btn-delete-row" title="Supprimer">🗑</button></td>
+    `;
+    document.getElementById('doc-chauffeurs-tbody').appendChild(row);
+    attachDocChauffeurRowListener(row);
+    row.querySelectorAll('.doc-cell').forEach(updateDocCell);
+    return row;
+  }
+
+  function creerLigneDocVehiculeSiAbsente(immat) {
+    let row = document.querySelector(`#doc-vehicules-tbody tr[data-immat="${CSS.escape(immat)}"]`);
+    if (row) return row;
+    row = document.createElement('tr');
+    row.dataset.immat = immat;
+    row.innerHTML = `
+      <td class="mono">${immat}</td>
+      <td class="doc-cell doc-cell-assurance"></td>
+      <td class="doc-cell doc-cell-controletechnique"></td>
+      <td class="doc-cell doc-cell-extincteur"></td>
+      <td class="doc-cell doc-cell-chronotachygraphe"></td>
+      <td class="doc-cell doc-cell-tachylimiteur"></td>
+      <td><button class="btn-delete-row" title="Supprimer">🗑</button></td>
+    `;
+    document.getElementById('doc-vehicules-tbody').appendChild(row);
+    attachDocVehiculeRowListener(row);
+    row.querySelectorAll('.doc-cell').forEach(updateDocCell);
+    return row;
+  }
+
   document.getElementById('btn-create-chauffeur').addEventListener('click', async () => {
     const nom = document.getElementById('chauffeur-nom').value.trim();
     if (!nom) { closeAddChauffeurModal(); return; }
@@ -3081,6 +3150,9 @@
       attachCompteRowListeners(trCompte);
     }
 
+    // Apparaît aussi automatiquement dans Administratif, prêt à renseigner ses documents
+    creerLigneDocChauffeurSiAbsente(nom);
+
     document.getElementById('chauffeur-nom').value = '';
     document.getElementById('chauffeur-telephone').value = '';
     document.getElementById('chauffeur-permis').value = '';
@@ -3151,6 +3223,9 @@
     optPlein.textContent = immat;
     document.getElementById('plein-vehicule').appendChild(optPlein);
 
+    // Apparaît aussi automatiquement dans Administratif, prêt à renseigner ses échéances
+    creerLigneDocVehiculeSiAbsente(immat);
+
     document.getElementById('tracteur-immat').value = '';
     document.getElementById('tracteur-modele').value = '';
     document.getElementById('tracteur-km').value = '';
@@ -3210,6 +3285,9 @@
     document.getElementById('remorque-tbody').appendChild(tr);
     updateVehiculeStatus(tr);
     updateSidebarCompteurs();
+
+    // Apparaît aussi automatiquement dans Administratif, prête à renseigner ses échéances
+    creerLigneDocVehiculeSiAbsente(immat);
 
     document.getElementById('remorque-immat').value = '';
     document.getElementById('remorque-ct').value = '';
