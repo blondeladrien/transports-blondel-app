@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Transports A.Blondel — Espace modérateur</title>
+<link rel="manifest" href="manifest-moderateur.json">
+<meta name="theme-color" content="#3E6FBF">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TB Modérateur">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
   :root{
     --bg: #12161B;
@@ -1202,6 +1209,11 @@
     }).join('');
   }
   document.querySelector('.bottom-nav-item[data-mobile-view="historique"]').addEventListener('click', chargerHistoriqueReel);
+
+  // Enregistrement du service worker (nécessaire pour l'installation en tant qu'app)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('service-worker.js').catch(() => {});
+  }
 </script>
 
 </body>
