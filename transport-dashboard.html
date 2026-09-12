@@ -822,10 +822,7 @@
         <div class="panel">
           <div class="panel-head">
             <h2>Clôtures de journée — chauffeurs</h2>
-            <div style="display:flex; gap:12px; align-items:center;">
-              <span style="font-size:12px; color:var(--text-dim);">Envoyées depuis l'app mobile</span>
-              <button class="btn" id="btn-add-chauffeur">+ Ajouter un chauffeur</button>
-            </div>
+            <span style="font-size:12px; color:var(--text-dim);">Envoyées depuis l'app mobile</span>
           </div>
           <div style="overflow-x:auto;">
             <table>
@@ -1400,42 +1397,6 @@
     </div>
   </div>
 
-  <div class="modal-overlay" id="modal-add-compte-overlay">
-    <div class="modal">
-      <div class="modal-head">
-        <div>
-          <div class="modal-head-name">Créer un compte mobile</div>
-          <div class="modal-head-sub">Accès à l'app chauffeur pour un membre de l'équipe</div>
-        </div>
-        <button class="modal-close" id="modal-add-compte-close">✕</button>
-      </div>
-      <div class="modal-body">
-        <div class="field">
-          <label>Chauffeur</label>
-          <select id="compte-chauffeur-select">
-          </select>
-          <div id="compte-aucun-chauffeur" style="display:none; font-size:12px; color:var(--warn); margin-top:8px;">
-            Tous vos chauffeurs ont déjà un compte mobile, ou aucun chauffeur n'a encore été créé (onglet Planning chauffeur).
-          </div>
-        </div>
-        <div class="field-row">
-          <div class="field">
-            <label>Identifiant</label>
-            <input type="text" id="compte-identifiant" placeholder="ex. p.nom">
-          </div>
-          <div class="field">
-            <label>Mot de passe provisoire</label>
-            <input type="text" id="compte-motdepasse" placeholder="À changer à la 1ère connexion">
-          </div>
-        </div>
-      </div>
-      <div class="modal-foot">
-        <button class="btn-ghost" id="modal-add-compte-close-2">Annuler</button>
-        <button class="btn" id="btn-create-compte-mobile">Créer le compte</button>
-      </div>
-    </div>
-  </div>
-
   <div class="modal-overlay" id="modal-reset-password-overlay">
     <div class="modal">
       <div class="modal-head">
@@ -1780,7 +1741,7 @@
         attachDriverRowListener(tr);
 
         // Rend aussi ce chauffeur sélectionnable dans les formulaires (mission, véhicule, compte mobile, plein...)
-        [document.getElementById('mission-chauffeur'), document.getElementById('tracteur-chauffeur'), document.getElementById('assign-chauffeur-select'), document.getElementById('compte-chauffeur-select'), document.getElementById('plein-chauffeur')].forEach(select => {
+        [document.getElementById('mission-chauffeur'), document.getElementById('tracteur-chauffeur'), document.getElementById('assign-chauffeur-select'), document.getElementById('plein-chauffeur')].forEach(select => {
           if (!select) return;
           const opt = document.createElement('option');
           opt.textContent = c.nom_complet;
@@ -2004,91 +1965,10 @@
   confirmCancelBtn.addEventListener('click', () => confirmOverlay.classList.remove('active'));
   confirmOverlay.addEventListener('click', (e) => { if (e.target === confirmOverlay) confirmOverlay.classList.remove('active'); });
 
-  // --- Comptes mobile chauffeurs (Réglages) ---
-  const addCompteOverlay = document.getElementById('modal-add-compte-overlay');
-  const closeAddCompteModal = () => addCompteOverlay.classList.remove('active');
+  // Note : la création de compte mobile se fait désormais uniquement via "+ Créer un compte"
+  // dans Réglages, qui ouvre la même modale complète que "Ajouter un chauffeur" (voir plus bas) —
+  // chauffeur et compte mobile sont créés ensemble, en un seul endroit.
 
-  function ouvrirModaleCompteMobile() {
-    // Liste des chauffeurs ayant déjà un compte mobile (pour ne pas leur en proposer un second)
-    const dejaEquipes = new Set(
-      Array.from(document.querySelectorAll('#comptes-mobile-tbody tr')).map(tr => tr.dataset.chauffeur)
-    );
-    const select = document.getElementById('compte-chauffeur-select');
-    select.innerHTML = '';
-    document.querySelectorAll('#chauffeur-tbody tr').forEach(row => {
-      if (dejaEquipes.has(row.dataset.name)) return; // déjà équipé, on ne le propose pas
-      const opt = document.createElement('option');
-      opt.value = row.dataset.name;
-      opt.textContent = row.dataset.name;
-      select.appendChild(opt);
-    });
-
-    const messageVide = document.getElementById('compte-aucun-chauffeur');
-    const btnCreer = document.getElementById('btn-create-compte-mobile');
-    if (select.options.length === 0) {
-      select.style.display = 'none';
-      messageVide.style.display = 'block';
-      btnCreer.disabled = true;
-    } else {
-      select.style.display = '';
-      messageVide.style.display = 'none';
-      btnCreer.disabled = false;
-    }
-    document.getElementById('compte-identifiant').value = '';
-    document.getElementById('compte-motdepasse').value = '';
-    addCompteOverlay.classList.add('active');
-  }
-  document.getElementById('btn-add-compte-mobile').addEventListener('click', ouvrirModaleCompteMobile);
-  document.getElementById('modal-add-compte-close').addEventListener('click', closeAddCompteModal);
-  document.getElementById('modal-add-compte-close-2').addEventListener('click', closeAddCompteModal);
-  addCompteOverlay.addEventListener('click', (e) => { if (e.target === addCompteOverlay) closeAddCompteModal(); });
-
-  document.getElementById('btn-create-compte-mobile').addEventListener('click', async () => {
-    const nom = document.getElementById('compte-chauffeur-select').value;
-    const identifiant = document.getElementById('compte-identifiant').value.trim();
-    const motdepasse = document.getElementById('compte-motdepasse').value.trim();
-    if (!nom) { afficherErreurApi('Sélectionnez un chauffeur.'); return; }
-    if (!identifiant || !motdepasse) { afficherErreurApi("Renseignez l'identifiant et le mot de passe."); return; }
-    const avatar = nom.split(' ').map(p => p[0]).join('').toUpperCase();
-
-    // Retrouve l'id serveur du chauffeur sélectionné pour lui rattacher le compte
-    let chauffeurServerId = null;
-    document.querySelectorAll('#chauffeur-tbody tr').forEach(ligne => {
-      if (ligne.dataset.name === nom) chauffeurServerId = ligne.dataset.serverId || null;
-    });
-
-    let resultatCompteApi = null;
-    if (chauffeurServerId) {
-      resultatCompteApi = await appelApi(`/chauffeurs/${chauffeurServerId}/compte-mobile`, {
-        method: 'POST',
-        body: JSON.stringify({ identifiant, mot_de_passe: motdepasse })
-      });
-    } else if (apiDisponible) {
-      afficherErreurApi(`Impossible de retrouver "${nom}" en base — rechargez la page et réessayez.`);
-    }
-
-    const tr = document.createElement('tr');
-    tr.dataset.chauffeur = nom;
-    if (resultatCompteApi) tr.dataset.serverId = resultatCompteApi.utilisateur_id;
-    tr.innerHTML = `
-      <td><div class="driver"><div class="avatar">${avatar}</div> ${nom}</div></td>
-      <td class="mono">${identifiant}</td>
-      <td class="mono compte-password">${motdepasse}</td>
-      <td><span class="chip ok"><span class="chip-dot"></span> Actif</span></td>
-      <td>
-        <div style="display:flex; gap:6px;">
-          <button class="btn-delete-row btn-reset-password" title="Réinitialiser le mot de passe">🔑</button>
-          <button class="btn-delete-row" title="Désactiver le compte">🗑</button>
-        </div>
-      </td>
-    `;
-    document.getElementById('comptes-mobile-tbody').appendChild(tr);
-    attachCompteRowListeners(tr);
-
-    document.getElementById('compte-identifiant').value = '';
-    document.getElementById('compte-motdepasse').value = '';
-    closeAddCompteModal();
-  });
 
   const resetPasswordOverlay = document.getElementById('modal-reset-password-overlay');
   const closeResetModal = () => resetPasswordOverlay.classList.remove('active');
@@ -3094,7 +2974,7 @@
   // --- Ajouter un chauffeur ---
   const addChauffeurOverlay = document.getElementById('modal-add-chauffeur-overlay');
   const closeAddChauffeurModal = () => addChauffeurOverlay.classList.remove('active');
-  document.getElementById('btn-add-chauffeur').addEventListener('click', () => addChauffeurOverlay.classList.add('active'));
+  document.getElementById('btn-add-compte-mobile').addEventListener('click', () => addChauffeurOverlay.classList.add('active'));
   document.getElementById('modal-add-chauffeur-close').addEventListener('click', closeAddChauffeurModal);
   document.getElementById('modal-add-chauffeur-close-2').addEventListener('click', closeAddChauffeurModal);
   addChauffeurOverlay.addEventListener('click', (e) => { if (e.target === addChauffeurOverlay) closeAddChauffeurModal(); });
@@ -3172,7 +3052,7 @@
     updateTotalMois();
 
     // Le nouveau chauffeur devient sélectionnable pour une mission, un véhicule ou un compte mobile
-    [document.getElementById('mission-chauffeur'), document.getElementById('tracteur-chauffeur'), document.getElementById('assign-chauffeur-select'), document.getElementById('compte-chauffeur-select'), document.getElementById('plein-chauffeur')].forEach(select => {
+    [document.getElementById('mission-chauffeur'), document.getElementById('tracteur-chauffeur'), document.getElementById('assign-chauffeur-select'), document.getElementById('plein-chauffeur')].forEach(select => {
       const opt = document.createElement('option');
       opt.textContent = nom;
       select.appendChild(opt);
