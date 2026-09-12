@@ -447,7 +447,10 @@
   <div class="main">
     <div class="topbar">
       <h1 id="view-title">Tableau de bord</h1>
-      <div class="date mono">Dimanche 6 septembre 2026</div>
+      <div style="display:flex; align-items:center; gap:14px;">
+        <button class="btn-ghost" id="btn-rafraichir-page" title="Recharger les données depuis le serveur">🔄 Rafraîchir</button>
+        <div class="date mono">Dimanche 6 septembre 2026</div>
+      </div>
     </div>
 
     <div class="content">
@@ -1795,6 +1798,22 @@
   });
 
   async function chargerDonneesInitiales() {
+    // Vide tout avant de repeupler, pour pouvoir appeler cette fonction plusieurs fois
+    // (rafraîchissement manuel) sans jamais dupliquer les lignes.
+    ['chauffeur-tbody', 'cloture-tbody', 'tracteur-tbody', 'remorque-tbody', 'comptes-mobile-tbody',
+     'doc-chauffeurs-tbody', 'doc-vehicules-tbody'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = '';
+    });
+    ['mission-chauffeur', 'tracteur-chauffeur', 'assign-chauffeur-select', 'plein-chauffeur',
+     'remorque-tracteur', 'plein-vehicule'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = '';
+    });
+    // Deux de ces menus ont une option "Non attribué" par défaut à conserver
+    document.getElementById('tracteur-chauffeur').innerHTML = '<option value="">Non attribué</option>';
+    document.getElementById('remorque-tracteur').innerHTML = '<option value="Non attribué">Non attribué</option>';
+
     const [chauffeurs, tracteurs, remorques, comptes, documentsChauffeurs] = await Promise.all([
       appelApi('/chauffeurs'),
       appelApi('/tracteurs'),
@@ -3533,6 +3552,20 @@
     if (Array.from(selectC.options).some(o => o.value === valC)) selectC.value = valC;
   }
   updateConsoFiltresOptions();
+
+  document.getElementById('btn-rafraichir-page').addEventListener('click', async () => {
+    const btn = document.getElementById('btn-rafraichir-page');
+    const texteOriginal = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '🔄 Rafraîchissement…';
+    if (apiDisponible) {
+      await chargerDonneesInitiales();
+    } else {
+      afficherErreurApi('Backend non connecté — impossible de rafraîchir les données réelles.');
+    }
+    btn.disabled = false;
+    btn.textContent = texteOriginal;
+  });
 
   async function chargerPleinsReels() {
     // --- Gazoil : avec calcul de consommation (nécessite l'historique complet du véhicule) ---
