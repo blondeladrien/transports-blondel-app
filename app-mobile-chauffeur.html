@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TB Chauffeur">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-chauffeur-192.png">
 <style>
   :root{
     --bg: #12161B;
@@ -682,7 +682,7 @@
           if (placeholder) placeholder.style.display = 'block';
         };
       });
-      appliquerLogo('icon-512.png');
+      appliquerLogo('icon-chauffeur-512.png');
     }
 
     document.querySelectorAll('[data-logo-slot]').forEach(boite => {
@@ -702,53 +702,8 @@
   })();
 
   // Comptes et données propres à chaque chauffeur — un compte ne voit QUE ses propres données.
-  const comptes = {
-    'n.lebreau': {
-      motdepasse: 'nathan2026',
-      nom: 'Nathan Lebreau', avatar: 'NL',
-      trajet: '', heure: '',
-      client: '', chef: '',
-      tracteur: 'Non attribué', remorque: 'Aucune remorque',
-      documents: {
-        carteIdentite: '',
-        permis: '',
-        passeport: '',
-        carteConducteur: '',
-        chronotachygraphe: '',
-        adr: ''
-      }
-    },
-    'd.brun': {
-      motdepasse: 'damien2026',
-      nom: 'Damien Brun', avatar: 'DB',
-      trajet: '', heure: '',
-      client: '', chef: '',
-      tracteur: 'Non attribué', remorque: 'Aucune remorque',
-      documents: {
-        carteIdentite: '',
-        permis: '',
-        passeport: '',
-        carteConducteur: '',
-        chronotachygraphe: '',
-        adr: ''
-      }
-    },
-    'a.blondel': {
-      motdepasse: 'adrien2026',
-      nom: 'Adrien Blondel', avatar: 'AB',
-      trajet: '', heure: '',
-      client: '', chef: '',
-      tracteur: 'Non attribué', remorque: 'Aucune remorque',
-      documents: {
-        carteIdentite: '',
-        permis: '',
-        passeport: '',
-        carteConducteur: '',
-        chronotachygraphe: '',
-        adr: ''
-      }
-    }
-  };
+  // Comptes de secours utilisés UNIQUEMENT si le serveur réel est injoignable — vide pour l'instant.
+  const comptes = {};
 
   // Adresse du backend réel. En local (voir README du dossier backend/) : http://127.0.0.1:5050/api
   // Si l'API n'est pas joignable, l'app bascule automatiquement sur les comptes de démonstration ci-dessous.
