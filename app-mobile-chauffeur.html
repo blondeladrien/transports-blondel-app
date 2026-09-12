@@ -511,6 +511,10 @@
 
       <div class="mobile-view" id="mobile-view-administratif">
         <div class="card">
+          <div class="card-title">Mes indemnités — total par mois</div>
+          <div id="mes-indemnites-mensuelles"></div>
+        </div>
+        <div class="card">
           <div class="card-title">Mes documents</div>
           <div class="doc-row">
             <div class="doc-name">Carte d'identité</div>
@@ -974,7 +978,41 @@
       afficherMesDocuments(await reponseDocuments.json());
     }
     chargerMaConsommation();
+    chargerMesIndemnitesMensuelles();
     return true;
+  }
+
+  // Affiche UNIQUEMENT le total par mois des indemnités du chauffeur connecté — jamais le détail
+  // quotidien (réservé au modérateur sur le web). Le serveur ne renvoie de toute façon que ses
+  // propres indemnités, quel que soit ce qui est demandé.
+  async function chargerMesIndemnitesMensuelles() {
+    if (!authToken) return;
+    try {
+      const reponse = await fetchAvecDelai(`${API_URL}/indemnites`, { headers: { 'Authorization': `Bearer ${authToken}` } }, 15000);
+      if (!reponse.ok) return;
+      const indemnites = await reponse.json();
+      const conteneur = document.getElementById('mes-indemnites-mensuelles');
+
+      if (!indemnites.length) {
+        conteneur.innerHTML = '<div class="file-name">Aucune indemnité déclarée pour l\'instant.</div>';
+        return;
+      }
+
+      const MOIS_NOMS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+      const totauxParMois = {};
+      indemnites.forEach(i => {
+        const cle = i.date_jour.slice(0, 7); // 'YYYY-MM'
+        totauxParMois[cle] = (totauxParMois[cle] || 0) + i.total;
+      });
+
+      const moisTries = Object.keys(totauxParMois).sort().reverse(); // le plus récent d'abord
+      conteneur.innerHTML = moisTries.map(cle => {
+        const [annee, mois] = cle.split('-');
+        const libelle = `${MOIS_NOMS[parseInt(mois, 10) - 1]} ${annee}`;
+        const montant = totauxParMois[cle].toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return `<div class="mission-row"><span class="mission-label">${libelle}</span><span class="mission-value mono">${montant} €</span></div>`;
+      }).join('');
+    } catch (e) { /* pas grave, la carte reste vide */ }
   }
 
   // Calcule et affiche la consommation (L/100km) du SEUL véhicule attitré au chauffeur connecté.
@@ -1490,6 +1528,7 @@
       showBanner(missionValidee
         ? `Clôture envoyée au modérateur ✓ (mission validée — ${nombreToursRealises} tour${nombreToursRealises > 1 ? 's' : ''})`
         : 'Clôture envoyée au modérateur ✓');
+      if (envoiIndemnitesReussi) chargerMesIndemnitesMensuelles();
     } else if (authToken) {
       showBanner('⚠️ Échec de l\'envoi — vérifiez votre connexion et réessayez.');
     } else {
