@@ -628,7 +628,19 @@
     }
 
     const logoExistant = localStorage.getItem(CLE_STOCKAGE);
-    if (logoExistant) appliquerLogo(logoExistant);
+    if (logoExistant) {
+      appliquerLogo(logoExistant);
+    } else {
+      document.querySelectorAll('[data-logo-slot]').forEach(boite => {
+        const img = boite.querySelector('img');
+        const placeholder = boite.querySelector('.logo-placeholder');
+        img.onerror = () => {
+          img.style.display = 'none';
+          if (placeholder) placeholder.style.display = 'block';
+        };
+      });
+      appliquerLogo('icon-512.png');
+    }
 
     document.querySelectorAll('[data-logo-slot]').forEach(boite => {
       boite.addEventListener('click', () => inputFichier.click());
