@@ -1239,11 +1239,16 @@
 
   // Adapte l'affichage à la hauteur RÉELLE de l'écran de chaque téléphone.
   function ajusterHauteurReelle() {
+    const hauteurPixels = window.innerHeight + 'px';
     document.documentElement.style.setProperty('--vh-reel', `${window.innerHeight * 0.01}px`);
+    document.body.style.height = hauteurPixels;
+    const phone = document.querySelector('.phone');
+    if (phone) phone.style.height = hauteurPixels;
   }
   ajusterHauteurReelle();
   window.addEventListener('resize', ajusterHauteurReelle);
   window.addEventListener('orientationchange', ajusterHauteurReelle);
+  setTimeout(ajusterHauteurReelle, 300);
 </script>
 
 </body>
