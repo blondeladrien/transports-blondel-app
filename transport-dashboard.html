@@ -781,6 +781,14 @@
       <div class="view" id="view-achats-exceptionnels">
         <div class="panel" style="margin-bottom:20px;">
           <div class="panel-head">
+            <h2>Filtres</h2>
+            <select id="achats-pro-chauffeur-filtre" style="background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:12px; padding:6px 10px; border-radius:7px;">
+              <option value="tous">Tous les chauffeurs</option>
+            </select>
+          </div>
+        </div>
+        <div class="panel" style="margin-bottom:20px;">
+          <div class="panel-head">
             <h2>Achats exceptionnels du mois — septembre 2026</h2>
             <span class="stat-value info" id="achats-pro-total-mois" style="font-size:20px;">— €</span>
           </div>
@@ -1982,6 +1990,7 @@
     updateFacturationChauffeurFiltre();
     updatePlanningChauffeurSelect();
     updatePeriodeChauffeurFiltre();
+    updatePeriodeAchatsProChauffeurFiltre();
     updateConsoFiltresOptions();
 
     await rafraichirAlertes();
@@ -2444,15 +2453,34 @@
     updateAchatsTotalMois();
   });
 
+  function updatePeriodeAchatsProChauffeurFiltre() {
+    const select = document.getElementById('achats-pro-chauffeur-filtre');
+    const valeurActuelle = select.value;
+    select.innerHTML = '<option value="tous">Tous les chauffeurs</option>';
+    document.querySelectorAll('#chauffeur-tbody tr').forEach(row => {
+      const opt = document.createElement('option');
+      opt.value = row.dataset.name;
+      opt.textContent = row.dataset.name;
+      select.appendChild(opt);
+    });
+    if (Array.from(select.options).some(o => o.value === valeurActuelle)) {
+      select.value = valeurActuelle;
+    }
+  }
+  updatePeriodeAchatsProChauffeurFiltre();
+  document.getElementById('achats-pro-chauffeur-filtre').addEventListener('change', updateAchatsProTotalMois);
+
   async function updateAchatsProTotalMois() {
+    const chauffeurFiltre = document.getElementById('achats-pro-chauffeur-filtre').value;
     const achats = await appelApi('/achats?type=pro');
     const tbody = document.getElementById('achats-pro-tbody');
 
     if (achats) {
+      const achatsFiltres = chauffeurFiltre === 'tous' ? achats : achats.filter(a => a.chauffeur_nom === chauffeurFiltre);
       tbody.innerHTML = '';
       let total = 0;
       const parChauffeur = {};
-      achats.forEach(a => {
+      achatsFiltres.forEach(a => {
         total += a.montant;
         parChauffeur[a.chauffeur_nom] = (parChauffeur[a.chauffeur_nom] || 0) + a.montant;
         const dateAffichee = new Date(a.date_achat + 'T00:00:00').toLocaleDateString('fr-FR');
@@ -2465,7 +2493,7 @@
         `;
         tbody.appendChild(tr);
       });
-      if (achats.length === 0) {
+      if (achatsFiltres.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4" class="placeholder" style="padding:24px;">Aucun achat professionnel déclaré.</td></tr>';
       }
       document.getElementById('achats-pro-total-mois').textContent =
@@ -2646,6 +2674,7 @@
   document.querySelector('.nav-item[data-view="planning-mensuel"]').addEventListener('click', () => {
     updatePlanningChauffeurSelect();
     updatePeriodeChauffeurFiltre();
+    updatePeriodeAchatsProChauffeurFiltre();
     chargerPlanningMensuel();
   });
 
@@ -2876,6 +2905,7 @@
           updateFacturationChauffeurFiltre();
           updatePlanningChauffeurSelect();
           updatePeriodeChauffeurFiltre();
+          updatePeriodeAchatsProChauffeurFiltre();
           updateConsoFiltresOptions();
         });
       });
@@ -3389,6 +3419,7 @@
     updateFacturationChauffeurFiltre();
     updatePlanningChauffeurSelect();
     updatePeriodeChauffeurFiltre();
+    updatePeriodeAchatsProChauffeurFiltre();
     updateConsoFiltresOptions();
 
     // Le chauffeur apparaît aussi dans l'onglet Chauffeur (clôtures), sans indemnité pour l'instant
