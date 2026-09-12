@@ -511,7 +511,34 @@
 
       <div class="mobile-view" id="mobile-view-administratif">
         <div class="card">
-          <div class="card-title">Mes indemnités — total par mois</div>
+          <div class="card-title">Mes indemnités</div>
+          <div class="field-row">
+            <div class="field">
+              <label>Mois</label>
+              <select id="mes-indemnites-mois">
+                <option value="0">Janvier</option>
+                <option value="1">Février</option>
+                <option value="2">Mars</option>
+                <option value="3">Avril</option>
+                <option value="4">Mai</option>
+                <option value="5">Juin</option>
+                <option value="6">Juillet</option>
+                <option value="7">Août</option>
+                <option value="8">Septembre</option>
+                <option value="9">Octobre</option>
+                <option value="10">Novembre</option>
+                <option value="11">Décembre</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Année</label>
+              <select id="mes-indemnites-annee">
+                <option value="2025">2025</option>
+                <option value="2026">2026</option>
+                <option value="2027">2027</option>
+              </select>
+            </div>
+          </div>
           <div id="mes-indemnites-mensuelles"></div>
         </div>
         <div class="card">
@@ -982,38 +1009,44 @@
     return true;
   }
 
-  // Affiche UNIQUEMENT le total par mois des indemnités du chauffeur connecté — jamais le détail
-  // quotidien (réservé au modérateur sur le web). Le serveur ne renvoie de toute façon que ses
-  // propres indemnités, quel que soit ce qui est demandé.
+  const MOIS_NOMS_INDEMNITES = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+  let indemnitesToutesRecues = [];
+
+  // Présélectionne le mois et l'année actuels
+  const aujourdhuiIndemnites = new Date();
+  document.getElementById('mes-indemnites-mois').value = aujourdhuiIndemnites.getMonth();
+  document.getElementById('mes-indemnites-annee').value = aujourdhuiIndemnites.getFullYear();
+
+  // Affiche UNIQUEMENT le total du mois sélectionné — jamais le détail quotidien (réservé au
+  // modérateur sur le web). Le serveur ne renvoie de toute façon que ses propres indemnités.
   async function chargerMesIndemnitesMensuelles() {
     if (!authToken) return;
     try {
       const reponse = await fetchAvecDelai(`${API_URL}/indemnites`, { headers: { 'Authorization': `Bearer ${authToken}` } }, 15000);
       if (!reponse.ok) return;
-      const indemnites = await reponse.json();
-      const conteneur = document.getElementById('mes-indemnites-mensuelles');
-
-      if (!indemnites.length) {
-        conteneur.innerHTML = '<div class="file-name">Aucune indemnité déclarée pour l\'instant.</div>';
-        return;
-      }
-
-      const MOIS_NOMS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
-      const totauxParMois = {};
-      indemnites.forEach(i => {
-        const cle = i.date_jour.slice(0, 7); // 'YYYY-MM'
-        totauxParMois[cle] = (totauxParMois[cle] || 0) + i.total;
-      });
-
-      const moisTries = Object.keys(totauxParMois).sort().reverse(); // le plus récent d'abord
-      conteneur.innerHTML = moisTries.map(cle => {
-        const [annee, mois] = cle.split('-');
-        const libelle = `${MOIS_NOMS[parseInt(mois, 10) - 1]} ${annee}`;
-        const montant = totauxParMois[cle].toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        return `<div class="mission-row"><span class="mission-label">${libelle}</span><span class="mission-value mono">${montant} €</span></div>`;
-      }).join('');
+      indemnitesToutesRecues = await reponse.json();
+      afficherIndemnitesDuMoisChoisi();
     } catch (e) { /* pas grave, la carte reste vide */ }
   }
+
+  function afficherIndemnitesDuMoisChoisi() {
+    const mois = parseInt(document.getElementById('mes-indemnites-mois').value, 10);
+    const annee = document.getElementById('mes-indemnites-annee').value;
+    const moisFormat = `${annee}-${String(mois + 1).padStart(2, '0')}`;
+    const conteneur = document.getElementById('mes-indemnites-mensuelles');
+
+    const duMois = indemnitesToutesRecues.filter(i => i.date_jour.startsWith(moisFormat));
+    const total = duMois.reduce((s, i) => s + i.total, 0);
+    const libelle = `${MOIS_NOMS_INDEMNITES[mois]} ${annee}`;
+
+    if (duMois.length === 0) {
+      conteneur.innerHTML = `<div class="mission-row"><span class="mission-label">${libelle}</span><span class="mission-value mono">0,00 €</span></div>`;
+    } else {
+      conteneur.innerHTML = `<div class="mission-row"><span class="mission-label">${libelle}</span><span class="mission-value mono" style="color:var(--ok);">${total.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span></div>`;
+    }
+  }
+  document.getElementById('mes-indemnites-mois').addEventListener('change', afficherIndemnitesDuMoisChoisi);
+  document.getElementById('mes-indemnites-annee').addEventListener('change', afficherIndemnitesDuMoisChoisi);
 
   // Calcule et affiche la consommation (L/100km) du SEUL véhicule attitré au chauffeur connecté.
   // Le serveur restreint déjà cette route à son propre véhicule ; aucun autre chauffeur n'est visible.
