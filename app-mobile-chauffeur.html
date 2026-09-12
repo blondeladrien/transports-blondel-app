@@ -1378,9 +1378,15 @@
     showScreen('screen-login');
   });
 
-  // Enregistrement du service worker (nécessaire pour l'installation en tant qu'app)
+  // Le service worker a causé plus de problèmes de cache tenace qu'il n'apportait de bénéfice.
+  // On désinscrit activement toute version déjà installée sur l'appareil, pour repartir propre.
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js').catch(() => {});
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      registrations.forEach((registration) => registration.unregister());
+    });
+    if (window.caches) {
+      caches.keys().then((noms) => noms.forEach((nom) => caches.delete(nom)));
+    }
   }
 </script>
 
