@@ -322,13 +322,14 @@
 
       <div class="mobile-view" id="mobile-view-mission">
         <div class="card">
-          <div class="card-title">Ma mission du jour</div>
+          <div class="card-title">Mission actuelle</div>
           <div class="mission-row"><span class="mission-label">Trajet</span><span class="mission-value" id="home-trajet">—</span></div>
           <div class="mission-row"><span class="mission-label">Heure de départ</span><span class="mission-value mono" id="home-heure">—</span></div>
           <div class="mission-row"><span class="mission-label">Client</span><span class="mission-value" id="home-client">—</span></div>
           <div class="mission-row"><span class="mission-label">Chef de chantier</span><span class="mission-value" id="home-chef">—</span></div>
           <div class="mission-row"><span class="mission-label">Statut</span><span class="mission-value" id="mission-acceptation-statut">En attente d'acceptation</span></div>
-          <div class="file-name">L'acceptation se fait via « Démarrer la journée » sur l'onglet Accueil.</div>
+          <button class="btn-secondary" id="btn-accepter-mission-seule" style="display:none;">✅ Accepter cette mission</button>
+          <div class="file-name" id="mission-aide-texte">La toute première mission de la journée s'accepte via « Démarrer la journée » sur l'onglet Accueil. Une mission suivante s'accepte directement ici.</div>
           <button class="btn-secondary" id="btn-creer-mission">+ Créer une mission</button>
         </div>
       </div>
@@ -447,9 +448,17 @@
 
       <div class="mobile-view" id="mobile-view-cloture">
         <div class="card">
-          <div class="card-title">Mission du jour</div>
+          <div class="card-title">Mission actuelle</div>
           <div class="mission-row"><span class="mission-label">Statut</span><span class="mission-value" id="mission-valide-statut">Non validée</span></div>
-          <button class="btn-secondary" id="btn-valider-mission">✅ Valider la mission réalisée avec succès</button>
+          <button class="btn-secondary" id="btn-valider-mission">✅ Valider cette mission</button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Kilométrage arrivée (ce soir)</div>
+          <div class="field">
+            <label>Compteur en fin de journée</label>
+            <input type="text" id="km-arrivee-jour" placeholder="ex. 82 950">
+          </div>
         </div>
 
         <div class="card">
@@ -595,17 +604,13 @@
   <div class="mobile-modal-overlay" id="modal-tours-overlay">
     <div class="mobile-modal">
       <div class="mobile-modal-head">
-        <div class="mobile-modal-head-title">Valider la mission</div>
-        <div class="mobile-modal-head-sub">Indiquez le nombre de tours réalisés aujourd'hui</div>
+        <div class="mobile-modal-head-title">Valider cette mission</div>
+        <div class="mobile-modal-head-sub">Ne clôture pas votre journée — vous pourrez enchaîner sur une autre mission</div>
       </div>
       <div class="mobile-modal-body">
         <div class="field">
           <label>Nombre de tours réalisés</label>
           <input type="number" id="nombre-tours" min="0" placeholder="ex. 3">
-        </div>
-        <div class="field">
-          <label>Kilométrage arrivée (ce soir)</label>
-          <input type="text" id="km-arrivee" placeholder="ex. 82 950">
         </div>
         <div class="field">
           <label>Remarque (optionnel)</label>
@@ -1186,7 +1191,6 @@
 
   btnValiderMission.addEventListener('click', () => {
     document.getElementById('nombre-tours').value = nombreToursRealises !== null ? nombreToursRealises : '';
-    document.getElementById('km-arrivee').value = kmArrivee;
     document.getElementById('remarque-mission').value = remarqueMission;
     toursOverlay.classList.add('active');
   });
@@ -1199,74 +1203,123 @@
     const valeur = document.getElementById('nombre-tours').value;
     if (valeur === '' || parseInt(valeur, 10) < 0) return;
     nombreToursRealises = parseInt(valeur, 10);
-    kmArrivee = document.getElementById('km-arrivee').value.trim();
     remarqueMission = document.getElementById('remarque-mission').value.trim();
     missionValidee = true;
     const toursTexte = `${nombreToursRealises} tour${nombreToursRealises > 1 ? 's' : ''}`;
 
-    let kmJourTexte = '';
-    const departNum = kmDepart ? parseFloat(kmDepart.replace(/[^\d.]/g, '')) : null;
-    const arriveeNum = kmArrivee ? parseFloat(kmArrivee.replace(/[^\d.]/g, '')) : null;
-    if (departNum !== null && arriveeNum !== null && arriveeNum > departNum) {
-      kmJourTexte = (arriveeNum - departNum).toLocaleString('fr-FR') + ' km parcourus aujourd\'hui';
-    } else if (arriveeNum !== null && depNumMissing(departNum)) {
-      kmJourTexte = 'Kilométrage départ non renseigné — impossible de calculer la distance';
-    }
-
-    // Persistance réelle : km arrivée + validation de la mission (déclenche la facturation côté serveur).
-    // On vérifie VRAIMENT si chaque envoi a réussi, au lieu d'afficher un succès systématique.
-    let kmEnvoiReussi = true;   // reste vrai si rien à envoyer (pas de km renseigné)
+    // Persistance réelle : validation de la mission (déclenche la facturation côté serveur).
+    // Le kilométrage n'est plus lié à cette étape : il se fait une seule fois, en fin de journée (onglet Clôture).
     let missionEnvoiReussi = true;
-    if (authToken) {
+    if (authToken && compteActuel && compteActuel.missionId) {
       try {
-        if (arriveeNum !== null) {
-          const reponseKm = await fetch(`${API_URL}/declarations/km-arrivee`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
-            body: JSON.stringify({ km_arrivee: arriveeNum })
-          });
-          kmEnvoiReussi = reponseKm.ok;
-        }
-        if (compteActuel && compteActuel.missionId) {
-          const reponseMission = await fetch(`${API_URL}/missions/${compteActuel.missionId}/valider`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
-            body: JSON.stringify({ nombre_tours: nombreToursRealises, remarque: remarqueMission })
-          });
-          missionEnvoiReussi = reponseMission.ok;
-        }
-      } catch (e) {
-        kmEnvoiReussi = false;
-        missionEnvoiReussi = false;
-      }
+        const reponseMission = await fetch(`${API_URL}/missions/${compteActuel.missionId}/valider`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+          body: JSON.stringify({ nombre_tours: nombreToursRealises, remarque: remarqueMission })
+        });
+        missionEnvoiReussi = reponseMission.ok;
+      } catch (e) { missionEnvoiReussi = false; }
     }
 
     btnValiderMission.classList.add('validated');
     btnValiderMission.textContent = `✓ Mission validée (${toursTexte})`;
     document.getElementById('mission-valide-statut').innerHTML =
       `Validée — ${toursTexte} réalisé${nombreToursRealises > 1 ? 's' : ''}` +
-      (kmArrivee ? `<br>Km arrivée : ${kmArrivee}` : '') +
-      (kmJourTexte ? `<br>${kmJourTexte}` : '') +
       (remarqueMission ? `<br>Remarque : ${remarqueMission}` : '') +
-      (!kmEnvoiReussi || !missionEnvoiReussi ? '<br><strong style="color:var(--danger);">⚠️ Échec de l\'envoi au serveur — réessayez avec du réseau.</strong>' : '');
+      (!missionEnvoiReussi ? '<br><strong style="color:var(--danger);">⚠️ Échec de l\'envoi au serveur — réessayez avec du réseau.</strong>' : '');
     toursOverlay.classList.remove('active');
 
-    if (!kmEnvoiReussi || !missionEnvoiReussi) {
+    if (!missionEnvoiReussi) {
       showBanner("⚠️ Échec de l'envoi au serveur — vérifiez votre connexion et réessayez.");
+    } else {
+      showBanner('Mission validée ✓ — vérification d\'une éventuelle mission suivante…');
+      await rafraichirMissionActuelle();
     }
+  });
 
-    // Mémorise le km d'arrivée et le tracteur utilisé pour la reprise automatique du lendemain
-    if (compteActuel && kmArrivee) {
-      compteActuel.dernierKmArrivee = kmArrivee;
-      compteActuel.dernierTracteurUtilise = document.getElementById('home-tracteur').textContent;
+  // Vérifie s'il existe une AUTRE mission non réalisée aujourd'hui (plusieurs missions par jour possibles),
+  // et met à jour l'affichage en conséquence — sans jamais toucher au kilométrage, qui reste indépendant.
+  async function rafraichirMissionActuelle() {
+    if (!authToken) return;
+    try {
+      const reponse = await fetchAvecDelai(`${API_URL}/missions`, { headers: { 'Authorization': `Bearer ${authToken}` } }, 15000);
+      if (!reponse.ok) return;
+      const missions = await reponse.json();
+      const aujourdhui = new Date().toISOString().slice(0, 10);
+      const missionSuivante = missions.find(m => !m.realisee && m.date_mission === aujourdhui) || null;
+
+      if (missionSuivante) {
+        compteActuel.missionId = missionSuivante.id;
+        compteActuel.trajet = missionSuivante.adresse || missionSuivante.client || '';
+        compteActuel.heure = missionSuivante.heure_depart;
+        compteActuel.client = missionSuivante.client;
+        compteActuel.chef = missionSuivante.chef_de_chantier;
+        document.getElementById('home-trajet').textContent = compteActuel.trajet || '—';
+        document.getElementById('home-heure').textContent = compteActuel.heure || '—';
+        document.getElementById('home-client').textContent = compteActuel.client || '—';
+        document.getElementById('home-chef').textContent = compteActuel.chef || '—';
+        const accepteeDeja = !!missionSuivante.acceptee;
+        document.getElementById('mission-acceptation-statut').textContent = accepteeDeja ? 'Acceptée — en cours' : "En attente d'acceptation";
+        document.getElementById('btn-accepter-mission-seule').style.display = accepteeDeja ? 'none' : 'block';
+        btnValiderMission.classList.remove('validated');
+        btnValiderMission.textContent = '✅ Valider cette mission';
+        document.getElementById('mission-valide-statut').textContent = 'Non validée';
+        showBanner('Une nouvelle mission est disponible aujourd\'hui ✓');
+      } else {
+        compteActuel.missionId = null;
+        document.getElementById('mission-acceptation-statut').textContent = 'Aucune autre mission aujourd\'hui';
+        document.getElementById('btn-accepter-mission-seule').style.display = 'none';
+      }
+    } catch (e) { /* pas grave, l'affichage reste inchangé */ }
+  }
+
+  // Accepter une mission suivante en cours de journée (indépendant du rituel du matin "Démarrer la journée")
+  document.getElementById('btn-accepter-mission-seule').addEventListener('click', async () => {
+    if (!compteActuel || !compteActuel.missionId) return;
+    let envoiReussi = true;
+    if (authToken) {
+      try {
+        const reponse = await fetch(`${API_URL}/missions/${compteActuel.missionId}/accepter`, {
+          method: 'PATCH',
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        envoiReussi = reponse.ok;
+      } catch (e) { envoiReussi = false; }
+    }
+    if (envoiReussi) {
+      document.getElementById('mission-acceptation-statut').textContent = 'Acceptée — en cours';
+      document.getElementById('btn-accepter-mission-seule').style.display = 'none';
+      showBanner('Mission acceptée ✓');
+    } else {
+      showBanner("⚠️ Échec de l'envoi — vérifiez votre connexion et réessayez.");
     }
   });
 
   function depNumMissing(departNum) { return departNum === null; }
 
   document.getElementById('btn-cloturer').addEventListener('click', async () => {
-    let envoiReussi = false;
+    let envoiIndemnitesReussi = false;
+    let envoiKmReussi = true; // reste vrai si aucun km n'est renseigné (pas obligatoire à ce stade)
+    const kmSoir = document.getElementById('km-arrivee-jour').value.trim();
+
     if (authToken) {
+      // Kilométrage du soir : indépendant de toute mission, une seule fois par jour
+      if (kmSoir) {
+        const arriveeNum = parseFloat(kmSoir.replace(/[^\d.]/g, ''));
+        try {
+          const reponseKm = await fetch(`${API_URL}/declarations/km-arrivee`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+            body: JSON.stringify({ km_arrivee: arriveeNum })
+          });
+          envoiKmReussi = reponseKm.ok;
+          if (envoiKmReussi && compteActuel) {
+            compteActuel.dernierKmArrivee = kmSoir;
+            compteActuel.dernierTracteurUtilise = document.getElementById('home-tracteur').textContent;
+          }
+        } catch (e) { envoiKmReussi = false; }
+      }
+
       const cases = document.querySelectorAll('.home-frais');
       const cles = ['casse_croute', 'repas_nuit', 'repas', 'petit_decouche', 'grand_decouche'];
       const indemnites = {};
@@ -1277,14 +1330,15 @@
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
           body: JSON.stringify(indemnites)
         });
-        envoiReussi = reponse.ok;
-      } catch (e) { /* envoiReussi reste false */ }
+        envoiIndemnitesReussi = reponse.ok;
+      } catch (e) { /* envoiIndemnitesReussi reste false */ }
     }
 
+    const envoiReussi = envoiIndemnitesReussi && envoiKmReussi;
     if (envoiReussi) {
       showBanner(missionValidee
         ? `Clôture envoyée au modérateur ✓ (mission validée — ${nombreToursRealises} tour${nombreToursRealises > 1 ? 's' : ''})`
-        : 'Clôture envoyée au modérateur ✓ (mission non validée)');
+        : 'Clôture envoyée au modérateur ✓');
     } else if (authToken) {
       showBanner('⚠️ Échec de l\'envoi — vérifiez votre connexion et réessayez.');
     } else {
