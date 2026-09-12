@@ -1998,6 +1998,7 @@
 
     await rafraichirAlertes();
     await chargerPleinsReels();
+    afficherTICPE();
   }
 
   async function rafraichirAlertes() {
@@ -2197,6 +2198,7 @@
       title.textContent = labels[key];
       if (key === 'cloture') { updateTotalMois(); updateAchatsTotalMois(); }
       if (key === 'achats-exceptionnels') updateAchatsProTotalMois();
+      if (key === 'ticpe') afficherTICPE();
     });
   });
 
