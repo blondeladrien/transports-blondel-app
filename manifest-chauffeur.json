@@ -1,0 +1,14 @@
+{
+  "name": "Transports A.Blondel — Chauffeur",
+  "short_name": "TB Chauffeur",
+  "description": "Application chauffeur — missions, pleins, indemnités",
+  "start_url": "app-mobile-chauffeur.html",
+  "display": "standalone",
+  "background_color": "#12161B",
+  "theme_color": "#3E6FBF",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

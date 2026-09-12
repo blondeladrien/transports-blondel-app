@@ -1,0 +1,14 @@
+{
+  "name": "Transports A.Blondel — Dashboard",
+  "short_name": "TB Dashboard",
+  "description": "Web modérateur — planning, véhicules, facturation",
+  "start_url": "transport-dashboard.html",
+  "display": "standalone",
+  "background_color": "#0F1319",
+  "theme_color": "#3E6FBF",
+  "orientation": "landscape-primary",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
