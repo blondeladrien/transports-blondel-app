@@ -47,6 +47,23 @@
     display:flex; flex-direction:column;
     position:relative;
   }
+  /* Sur téléphone réel (ou une fois installée comme appli), le cadre décoratif de démo
+     laisse place à un plein écran réel, avec une hauteur qui s'adapte correctement
+     aux barres du navigateur mobile (dvh plutôt que vh). */
+  @media (max-width: 480px) {
+    body{ padding:0; }
+    .phone{
+      width:100%; height:100vh; height:100dvh; max-height:none;
+      border-radius:0; border:none;
+    }
+  }
+  @media (display-mode: standalone) {
+    body{ padding:0; }
+    .phone{
+      width:100%; height:100vh; height:100dvh; max-height:none;
+      border-radius:0; border:none;
+    }
+  }
   .screen{display:none; flex-direction:column; flex:1;}
   .screen.active{display:flex;}
 
