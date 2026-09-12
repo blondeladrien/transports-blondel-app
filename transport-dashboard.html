@@ -787,6 +787,9 @@
                 <option value="2026" selected>2026</option>
                 <option value="2027">2027</option>
               </select>
+              <select id="periode-chauffeur-filtre" style="background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:12px; padding:6px 10px; border-radius:7px;">
+                <option value="tous">Tous les chauffeurs</option>
+              </select>
             </div>
           </div>
         </div>
@@ -1872,6 +1875,7 @@
     updateSidebarCompteurs();
     updateFacturationChauffeurFiltre();
     updatePlanningChauffeurSelect();
+    updatePeriodeChauffeurFiltre();
     updateConsoFiltresOptions();
 
     await rafraichirAlertes();
@@ -2132,9 +2136,27 @@
   function getPeriodeSelectionnee() {
     return {
       mois: parseInt(document.getElementById('periode-mois').value, 10),
-      annee: parseInt(document.getElementById('periode-annee').value, 10)
+      annee: parseInt(document.getElementById('periode-annee').value, 10),
+      chauffeur: document.getElementById('periode-chauffeur-filtre').value
     };
   }
+
+  function updatePeriodeChauffeurFiltre() {
+    const select = document.getElementById('periode-chauffeur-filtre');
+    const valeurActuelle = select.value;
+    select.innerHTML = '<option value="tous">Tous les chauffeurs</option>';
+    document.querySelectorAll('#chauffeur-tbody tr').forEach(row => {
+      const opt = document.createElement('option');
+      opt.value = row.dataset.name;
+      opt.textContent = row.dataset.name;
+      select.appendChild(opt);
+    });
+    if (Array.from(select.options).some(o => o.value === valeurActuelle)) {
+      select.value = valeurActuelle;
+    }
+  }
+  updatePeriodeChauffeurFiltre();
+  document.getElementById('periode-chauffeur-filtre').addEventListener('change', updateTotalMois);
 
   function dateCorrespondPeriode(dateISO, periode) {
     if (!dateISO) return false;
@@ -2150,15 +2172,74 @@
   }
   updateSidebarCompteurs();
 
-  function updateTotalMois() {
+  const NOMS_FRAIS_AFFICHAGE = { cassecroute: 'Casse-croûte', repasnuit: 'Repas nuit', repas: 'Repas', petitdecouche: 'Petit découché', granddecouche: 'Grand découché' };
+
+  async function updateTotalMois() {
     const periode = getPeriodeSelectionnee();
     document.getElementById('indemnites-titre-periode').textContent =
       `Indemnités du mois — ${MOIS_NOMS[periode.mois]} ${periode.annee}`;
+    const moisFormat = `${periode.annee}-${String(periode.mois + 1).padStart(2, '0')}`;
 
+    const indemnites = await appelApi(`/indemnites?mois=${moisFormat}`);
+    const tbody = document.getElementById('cloture-tbody');
+
+    if (indemnites) {
+      // Vraies données : on reconstruit entièrement le tableau à partir du serveur
+      const indemnitesFiltrees = periode.chauffeur === 'tous' ? indemnites : indemnites.filter(i => i.chauffeur_nom === periode.chauffeur);
+      tbody.innerHTML = '';
+      let total = 0;
+      const parChauffeur = {};
+      indemnitesFiltrees.forEach(i => {
+        total += i.total;
+        parChauffeur[i.chauffeur_nom] = (parChauffeur[i.chauffeur_nom] || 0) + i.total;
+
+        const avatar = i.chauffeur_nom.split(' ').map(p => p[0]).join('').toUpperCase();
+        const dateAffichee = new Date(i.date_jour + 'T00:00:00').toLocaleDateString('fr-FR');
+        const fraisCoches = fraisKeys.filter(k => i[{cassecroute:'casse_croute', repasnuit:'repas_nuit', repas:'repas', petitdecouche:'petit_decouche', granddecouche:'grand_decouche'}[k]]);
+        const row = document.createElement('tr');
+        row.className = 'cloture-row';
+        row.dataset.name = i.chauffeur_nom;
+        row.dataset.avatar = avatar;
+        row.dataset.date = i.date_jour;
+        row.dataset.total = i.total.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €';
+        row.dataset.commentaire = i.commentaire || 'Aucun commentaire.';
+        fraisKeys.forEach(k => {
+          row.dataset[k] = fraisCoches.includes(k) ? '1' : '0';
+        });
+        row.innerHTML = `
+          <td><div class="driver"><div class="avatar">${avatar}</div> ${i.chauffeur_nom}</div></td>
+          <td class="mono">${dateAffichee}</td>
+          <td>${fraisCoches.length ? fraisCoches.map(k => NOMS_FRAIS_AFFICHAGE[k]).join(', ') : 'Aucune indemnité déclarée'}</td>
+          <td class="mono">${i.total.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €</td>
+          <td><button class="btn-delete-row" title="Supprimer">🗑</button></td>
+        `;
+        tbody.appendChild(row);
+        attachClotureRowListener(row);
+      });
+      if (indemnitesFiltrees.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="placeholder" style="padding:24px;">Aucune clôture envoyée pour cette période.</td></tr>';
+      }
+
+      const formatted = total.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+      document.getElementById('cloture-total-mois').textContent = formatted;
+      document.getElementById('dashboard-total-mois').textContent = formatted;
+      const detailEl = document.getElementById('cloture-total-par-chauffeur');
+      detailEl.innerHTML = Object.entries(parChauffeur).map(([nom, montant]) => `
+        <div class="decl-row" style="padding:10px 18px;">
+          <span class="decl-label">${nom}</span>
+          <span class="decl-value mono">${montant.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span>
+        </div>
+      `).join('');
+      return;
+    }
+
+    // Repli local (mode démonstration, backend injoignable) : calcule à partir des lignes déjà affichées
     let total = 0;
     const parChauffeur = {};
     document.querySelectorAll('.cloture-row').forEach(row => {
-      const correspond = dateCorrespondPeriode(row.dataset.date, periode);
+      const correspondPeriode = dateCorrespondPeriode(row.dataset.date, periode);
+      const correspondChauffeur = periode.chauffeur === 'tous' || row.dataset.name === periode.chauffeur;
+      const correspond = correspondPeriode && correspondChauffeur;
       row.classList.toggle('hidden', !correspond);
       if (!correspond) return;
       const montant = parseEuro(row.dataset.total);
@@ -2381,6 +2462,7 @@
   // Recharge aussi quand on clique sur l'onglet, au cas où la connexion API vient de s'établir
   document.querySelector('.nav-item[data-view="planning-mensuel"]').addEventListener('click', () => {
     updatePlanningChauffeurSelect();
+    updatePeriodeChauffeurFiltre();
     chargerPlanningMensuel();
   });
 
@@ -2610,6 +2692,7 @@
           updateSidebarCompteurs();
           updateFacturationChauffeurFiltre();
           updatePlanningChauffeurSelect();
+          updatePeriodeChauffeurFiltre();
           updateConsoFiltresOptions();
         });
       });
@@ -3094,6 +3177,7 @@
     updateSidebarCompteurs();
     updateFacturationChauffeurFiltre();
     updatePlanningChauffeurSelect();
+    updatePeriodeChauffeurFiltre();
     updateConsoFiltresOptions();
 
     // Le chauffeur apparaît aussi dans l'onglet Chauffeur (clôtures), sans indemnité pour l'instant
