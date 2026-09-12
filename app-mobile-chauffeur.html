@@ -1050,13 +1050,24 @@
     demarrerOverlay.classList.remove('active');
   }
 
-  document.getElementById('btn-demarrer-journee').addEventListener('click', () => {
+  document.getElementById('btn-demarrer-journee').addEventListener('click', async () => {
     if (journeeDemarree) {
       showBanner('Journée déjà démarrée ✓');
       return;
     }
     document.getElementById('demarrer-tracteur-nom').textContent = 'Véhicule moteur — ' + document.getElementById('home-tracteur').textContent;
-    document.getElementById('demarrer-km-depart').value = kmDepart || '';
+
+    let kmPreRempli = kmDepart || '';
+    if (!kmPreRempli && authToken) {
+      try {
+        const reponse = await fetchAvecDelai(`${API_URL}/declarations/aujourdhui`, { headers: { 'Authorization': `Bearer ${authToken}` } }, 8000);
+        if (reponse.ok) {
+          const donnees = await reponse.json();
+          if (donnees.km_depart_suggere) kmPreRempli = donnees.km_depart_suggere;
+        }
+      } catch (e) { /* pas grave, le champ restera simplement vide à remplir manuellement */ }
+    }
+    document.getElementById('demarrer-km-depart').value = kmPreRempli;
     etapeKm.style.display = 'block';
     etapeAccepter.style.display = 'none';
     demarrerOverlay.classList.add('active');
