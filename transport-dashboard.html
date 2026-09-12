@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TB Dashboard">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-dashboard-192.png">
 <style>
   :root{
     --bg: #0F1319;
@@ -1650,7 +1650,7 @@
           if (placeholder) placeholder.style.display = 'block';
         };
       });
-      appliquerLogo('icon-512.png');
+      appliquerLogo('icon-dashboard-512.png');
     }
 
     let boiteActive = null;
@@ -1843,25 +1843,37 @@
 
     if (comptes && comptes.length) {
       comptes.forEach(u => {
-        if (!u.nom_complet) return;
-        const avatar = u.nom_complet.split(' ').map(p => p[0]).join('').toUpperCase();
+        const estOrphelin = !u.nom_complet;
+        const nomAffiche = u.nom_complet || 'Compte orphelin (sans chauffeur)';
+        const avatar = estOrphelin ? '⚠️' : u.nom_complet.split(' ').map(p => p[0]).join('').toUpperCase();
         const tr = document.createElement('tr');
-        tr.dataset.chauffeur = u.nom_complet;
+        tr.dataset.chauffeur = nomAffiche;
         tr.dataset.serverId = u.id;
         tr.innerHTML = `
-          <td><div class="driver"><div class="avatar">${avatar}</div> ${u.nom_complet}</div></td>
+          <td><div class="driver"><div class="avatar">${avatar}</div> ${nomAffiche}</div></td>
           <td class="mono">${u.identifiant}</td>
           <td class="mono compte-password">••••••••</td>
           <td>${u.actif ? '<span class="chip ok"><span class="chip-dot"></span> Actif</span>' : '<span class="chip danger"><span class="chip-dot"></span> Désactivé</span>'}</td>
           <td>
             <div style="display:flex; gap:6px;">
-              <button class="btn-delete-row btn-reset-password" title="Réinitialiser le mot de passe">🔑</button>
-              <button class="btn-delete-row" title="Désactiver le compte">🗑</button>
+              ${estOrphelin
+                ? '<button class="btn-delete-row btn-liberer-identifiant" title="Supprimer définitivement et libérer l\'identifiant">🗑 Libérer l\'identifiant</button>'
+                : '<button class="btn-delete-row btn-reset-password" title="Réinitialiser le mot de passe">🔑</button><button class="btn-delete-row" title="Désactiver le compte">🗑</button>'
+              }
             </div>
           </td>
         `;
         document.getElementById('comptes-mobile-tbody').appendChild(tr);
-        attachCompteRowListeners(tr);
+        if (estOrphelin) {
+          tr.querySelector('.btn-liberer-identifiant').addEventListener('click', () => {
+            showConfirm(`Supprimer définitivement ce compte orphelin (${u.identifiant}) et libérer son identifiant ?`, async () => {
+              await appelApi(`/utilisateurs/${u.id}/liberer`, { method: 'DELETE' });
+              tr.remove();
+            });
+          });
+        } else {
+          attachCompteRowListeners(tr);
+        }
       });
     }
 
