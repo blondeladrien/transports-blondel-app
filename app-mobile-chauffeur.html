@@ -1158,27 +1158,62 @@
   document.getElementById('modal-creer-mission-annuler').addEventListener('click', () => {
     creerMissionOverlay.classList.remove('active');
   });
-  document.getElementById('modal-creer-mission-confirmer').addEventListener('click', () => {
+  document.getElementById('modal-creer-mission-confirmer').addEventListener('click', async () => {
     const trajet = document.getElementById('nouvelle-mission-trajet').value.trim();
     if (!trajet) return;
-    const heure = document.getElementById('nouvelle-mission-heure').value || '—';
+    const heure = document.getElementById('nouvelle-mission-heure').value || null;
     const client = document.getElementById('nouvelle-mission-client').value.trim() || 'Non renseigné';
-    const chef = document.getElementById('nouvelle-mission-chef').value.trim() || 'Non renseigné';
+    const chef = document.getElementById('nouvelle-mission-chef').value.trim() || null;
 
-    document.getElementById('home-trajet').textContent = trajet;
-    document.getElementById('home-heure').textContent = heure;
-    document.getElementById('home-client').textContent = client;
-    document.getElementById('home-chef').textContent = chef;
-
-    missionAcceptee = false;
-    journeeDemarree = false;
-    document.getElementById('mission-acceptation-statut').textContent = "En attente d'acceptation";
-    document.getElementById('journee-statut').textContent = 'Nouvelle mission à accepter';
-    document.getElementById('btn-demarrer-journee').classList.remove('validated');
-    document.getElementById('btn-demarrer-journee').textContent = '▶️ Démarrer la journée';
+    let nouvelleMissionId = null;
+    let envoiReussi = true;
+    if (authToken) {
+      try {
+        const reponse = await fetch(`${API_URL}/missions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+          body: JSON.stringify({
+            date_mission: new Date().toISOString().slice(0, 10),
+            heure_depart: heure,
+            client: client,
+            adresse: trajet,
+            chef_de_chantier: chef
+          })
+        });
+        envoiReussi = reponse.ok;
+        if (envoiReussi) {
+          const donnees = await reponse.json();
+          nouvelleMissionId = donnees.id;
+        }
+      } catch (e) { envoiReussi = false; }
+    } else {
+      envoiReussi = false; // pas de mode démonstration ici : sans identifiant réel, impossible à accepter ensuite
+    }
 
     creerMissionOverlay.classList.remove('active');
-    showBanner('Mission créée et envoyée au modérateur ✓');
+
+    if (!envoiReussi) {
+      showBanner("⚠️ Échec de la création — vérifiez votre connexion et réessayez.");
+      return;
+    }
+
+    // La mission est réellement créée : elle devient la mission actuelle, prête à être acceptée
+    compteActuel.missionId = nouvelleMissionId;
+    compteActuel.trajet = trajet;
+    compteActuel.heure = heure;
+    compteActuel.client = client;
+    compteActuel.chef = chef;
+    document.getElementById('home-trajet').textContent = trajet;
+    document.getElementById('home-heure').textContent = heure || '—';
+    document.getElementById('home-client').textContent = client;
+    document.getElementById('home-chef').textContent = chef || '—';
+    document.getElementById('mission-acceptation-statut').textContent = "En attente d'acceptation";
+    document.getElementById('btn-accepter-mission-seule').style.display = 'block';
+    btnValiderMission.classList.remove('validated');
+    btnValiderMission.textContent = '✅ Valider cette mission';
+    document.getElementById('mission-valide-statut').textContent = 'Non validée';
+
+    showBanner('Mission créée ✓ — vous pouvez maintenant l\'accepter');
   });
 
   // --- Validation de la mission du soir ---
