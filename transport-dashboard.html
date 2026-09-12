@@ -3030,11 +3030,35 @@
   document.getElementById('modal-assign-close-2').addEventListener('click', closeAssignModal);
   assignOverlay.addEventListener('click', (e) => { if (e.target === assignOverlay) closeAssignModal(); });
 
-  document.getElementById('btn-save-assign').addEventListener('click', () => {
+  document.getElementById('btn-save-assign').addEventListener('click', async () => {
     if (!currentAssignRow) return;
+    const nouveauNom = document.getElementById('assign-chauffeur-select').value;
     const cell = currentAssignRow.querySelector('.chauffeur-attitre-cell');
-    if (cell) cell.textContent = document.getElementById('assign-chauffeur-select').value;
+    if (cell) cell.textContent = nouveauNom;
     closeAssignModal();
+
+    const tracteurServerId = currentAssignRow.dataset.serverId;
+    if (!tracteurServerId || !apiDisponible) return;
+
+    // Retrouve, parmi les chauffeurs réels, celui qui avait déjà ce tracteur (à lui retirer)
+    // et celui qui doit désormais le recevoir (à lui attribuer).
+    const chauffeursActuels = await appelApi('/chauffeurs');
+    if (!chauffeursActuels) return;
+    const ancienTitulaire = chauffeursActuels.find(c => String(c.tracteur_id) === String(tracteurServerId));
+    const nouveauTitulaire = chauffeursActuels.find(c => c.nom_complet === nouveauNom);
+
+    if (ancienTitulaire && (!nouveauTitulaire || ancienTitulaire.id !== nouveauTitulaire.id)) {
+      await appelApi(`/chauffeurs/${ancienTitulaire.id}/vehicule`, {
+        method: 'PATCH',
+        body: JSON.stringify({ tracteur_id: null })
+      });
+    }
+    if (nouveauTitulaire) {
+      await appelApi(`/chauffeurs/${nouveauTitulaire.id}/vehicule`, {
+        method: 'PATCH',
+        body: JSON.stringify({ tracteur_id: parseInt(tracteurServerId, 10) })
+      });
+    }
   });
 
   document.getElementById('btn-save-ct').addEventListener('click', () => {
