@@ -1754,6 +1754,14 @@
         `;
         document.getElementById('chauffeur-tbody').appendChild(tr);
         attachDriverRowListener(tr);
+
+        // Rend aussi ce chauffeur sélectionnable dans les formulaires (mission, véhicule, compte mobile, plein...)
+        [document.getElementById('mission-chauffeur'), document.getElementById('tracteur-chauffeur'), document.getElementById('assign-chauffeur-select'), document.getElementById('compte-chauffeur-select'), document.getElementById('plein-chauffeur')].forEach(select => {
+          if (!select) return;
+          const opt = document.createElement('option');
+          opt.textContent = c.nom_complet;
+          select.appendChild(opt);
+        });
       });
     }
 
@@ -1987,6 +1995,8 @@
         method: 'POST',
         body: JSON.stringify({ identifiant, mot_de_passe: motdepasse })
       });
+    } else if (apiDisponible) {
+      afficherErreurApi(`Impossible de retrouver "${nom}" en base — rechargez la page et réessayez.`);
     }
 
     const tr = document.createElement('tr');
