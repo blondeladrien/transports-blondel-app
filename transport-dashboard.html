@@ -647,6 +647,7 @@
                 <th>Type</th>
                 <th>Contrôle technique</th>
                 <th>Tracteur associé</th>
+                <th>Chauffeur attitré</th>
                 <th>Statut</th>
                 <th></th>
               </tr>
@@ -1791,14 +1792,17 @@
         tr.dataset.ct = r.date_controle_technique || '';
         tr.dataset.rdv = r.date_rdv_controle_technique || '';
         tr.dataset.serverId = r.id;
+        const chauffeurAttitreRemorque = (chauffeurs || []).find(c => c.remorque_id === r.id);
         tr.innerHTML = `
           <td class="mono">${r.immatriculation}</td>
           <td>${r.type || ''}</td>
           <td class="mono">${r.date_controle_technique ? new Date(r.date_controle_technique + 'T00:00:00').toLocaleDateString('fr-FR') : '—'}</td>
           <td>${r.tracteur_immat || 'Non attribué'}</td>
+          <td class="chauffeur-attitre-cell">${chauffeurAttitreRemorque ? chauffeurAttitreRemorque.nom_complet : 'Non attribué'}</td>
           <td class="statut-cell"></td>
           <td>
             <div style="display:flex; gap:6px;">
+              <button class="btn-delete-row btn-assign-chauffeur-remorque" title="Modifier le chauffeur attitré">🔄</button>
               <button class="btn-delete-row btn-planifier-ct" title="Planifier le contrôle technique">📅</button>
               <button class="btn-delete-row" title="Supprimer">🗑</button>
             </div>
@@ -3018,6 +3022,7 @@
 
   let currentCtRow = null;
   let currentAssignRow = null;
+  let currentAssignEstRemorque = false;
   const ctOverlay = document.getElementById('modal-ct-overlay');
   const closeCtModal = () => ctOverlay.classList.remove('active');
   document.getElementById('modal-ct-close').addEventListener('click', closeCtModal);
@@ -3037,26 +3042,27 @@
     if (cell) cell.textContent = nouveauNom;
     closeAssignModal();
 
-    const tracteurServerId = currentAssignRow.dataset.serverId;
-    if (!tracteurServerId || !apiDisponible) return;
+    const vehiculeServerId = currentAssignRow.dataset.serverId;
+    const champCle = currentAssignEstRemorque ? 'remorque_id' : 'tracteur_id';
+    if (!vehiculeServerId || !apiDisponible) return;
 
-    // Retrouve, parmi les chauffeurs réels, celui qui avait déjà ce tracteur (à lui retirer)
+    // Retrouve, parmi les chauffeurs réels, celui qui avait déjà ce véhicule (à lui retirer)
     // et celui qui doit désormais le recevoir (à lui attribuer).
     const chauffeursActuels = await appelApi('/chauffeurs');
     if (!chauffeursActuels) return;
-    const ancienTitulaire = chauffeursActuels.find(c => String(c.tracteur_id) === String(tracteurServerId));
+    const ancienTitulaire = chauffeursActuels.find(c => String(c[champCle]) === String(vehiculeServerId));
     const nouveauTitulaire = chauffeursActuels.find(c => c.nom_complet === nouveauNom);
 
     if (ancienTitulaire && (!nouveauTitulaire || ancienTitulaire.id !== nouveauTitulaire.id)) {
       await appelApi(`/chauffeurs/${ancienTitulaire.id}/vehicule`, {
         method: 'PATCH',
-        body: JSON.stringify({ tracteur_id: null })
+        body: JSON.stringify({ [champCle]: null })
       });
     }
     if (nouveauTitulaire) {
       await appelApi(`/chauffeurs/${nouveauTitulaire.id}/vehicule`, {
         method: 'PATCH',
-        body: JSON.stringify({ tracteur_id: parseInt(tracteurServerId, 10) })
+        body: JSON.stringify({ [champCle]: parseInt(vehiculeServerId, 10) })
       });
     }
   });
@@ -3071,8 +3077,10 @@
 
   function handleVehiculeTbodyClick(e) {
     const assignBtn = e.target.closest('.btn-assign-chauffeur');
-    if (assignBtn) {
-      currentAssignRow = assignBtn.closest('tr');
+    const assignBtnRemorque = e.target.closest('.btn-assign-chauffeur-remorque');
+    if (assignBtn || assignBtnRemorque) {
+      currentAssignRow = (assignBtn || assignBtnRemorque).closest('tr');
+      currentAssignEstRemorque = !!assignBtnRemorque;
       const cell = currentAssignRow.querySelector('.chauffeur-attitre-cell');
       document.getElementById('assign-vehicule-nom').textContent = currentAssignRow.querySelector('td:nth-child(1)').textContent;
       document.getElementById('assign-chauffeur-select').value = cell ? cell.textContent.trim() : 'Non attribué';
@@ -3382,9 +3390,11 @@
       <td>${type}</td>
       <td class="mono">${ct}</td>
       <td>${tracteur}</td>
+      <td class="chauffeur-attitre-cell">Non attribué</td>
       <td class="statut-cell"></td>
       <td>
         <div style="display:flex; gap:6px;">
+          <button class="btn-delete-row btn-assign-chauffeur-remorque" title="Modifier le chauffeur attitré">🔄</button>
           <button class="btn-delete-row btn-planifier-ct" title="Planifier le contrôle technique">📅</button>
           <button class="btn-delete-row" title="Supprimer">🗑</button>
         </div>
