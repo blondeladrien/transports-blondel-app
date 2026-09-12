@@ -27,38 +27,34 @@
     --info: #6C9CFF;
   }
   *{box-sizing:border-box; margin:0; padding:0;}
+  html, body{height:100%;}
   body{
-    background:#0B0E12;
+    background:var(--bg);
     color:var(--text);
     font-family:'IBM Plex Sans', -apple-system, sans-serif;
-    display:flex;
-    justify-content:center;
-    min-height:100vh;
-    padding:24px 0;
+    height:100vh;
+    height:100dvh;
   }
   .mono{font-family:'IBM Plex Mono', monospace;}
   .phone{
-    width:390px; max-width:100%;
-    height:760px; max-height:92vh;
+    width:100%;
+    height:100%;
     background:var(--bg);
-    border-radius:28px;
-    border:1px solid var(--line);
     overflow:hidden;
     display:flex; flex-direction:column;
     position:relative;
   }
-  @media (max-width: 480px) {
-    body{ padding:0; }
-    .phone{
-      width:100%; height:100vh; height:100dvh; max-height:none;
-      border-radius:0; border:none;
+  @media (min-width: 481px){
+    body{
+      background:#0B0E12;
+      display:flex; align-items:center; justify-content:center;
+      padding:24px 0;
     }
-  }
-  @media (display-mode: standalone) {
-    body{ padding:0; }
     .phone{
-      width:100%; height:100vh; height:100dvh; max-height:none;
-      border-radius:0; border:none;
+      width:390px; max-width:100%;
+      height:760px; max-height:92vh;
+      border-radius:28px;
+      border:1px solid var(--line);
     }
   }
   .screen{display:none; flex-direction:column; flex:1;}
@@ -1238,7 +1234,12 @@
 
   // Enregistrement du service worker (nécessaire pour l'installation en tant qu'app)
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js').catch(() => {});
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      registrations.forEach((registration) => registration.unregister());
+    });
+    if (window.caches) {
+      caches.keys().then((noms) => noms.forEach((nom) => caches.delete(nom)));
+    }
   }
 </script>
 
