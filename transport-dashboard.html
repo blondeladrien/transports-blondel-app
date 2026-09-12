@@ -3479,7 +3479,12 @@
 
   // Enregistrement du service worker (nécessaire pour l'installation en tant qu'app)
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js').catch(() => {});
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      registrations.forEach((registration) => registration.unregister());
+    });
+    if (window.caches) {
+      caches.keys().then((noms) => noms.forEach((nom) => caches.delete(nom)));
+    }
   }
 </script>
 
