@@ -2183,6 +2183,7 @@
       views.forEach(v => v.classList.remove('active'));
       document.getElementById('view-' + key).classList.add('active');
       title.textContent = labels[key];
+      if (key === 'cloture') updateTotalMois();
     });
   });
 
@@ -3560,6 +3561,7 @@
     btn.textContent = '🔄 Rafraîchissement…';
     if (apiDisponible) {
       await chargerDonneesInitiales();
+      await updateTotalMois();
     } else {
       afficherErreurApi('Backend non connecté — impossible de rafraîchir les données réelles.');
     }
