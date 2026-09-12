@@ -3536,7 +3536,7 @@
 
   async function chargerPleinsReels() {
     // --- Gazoil : avec calcul de consommation (nécessite l'historique complet du véhicule) ---
-    const pleinsGazoil = await appelApi('/pleins?type_carburant=gazoil');
+    const pleinsGazoil = await appelApi(`/pleins?type_carburant=gazoil&_=${Date.now()}`);
     const tbodyGazoil = document.getElementById('conso-tbody');
     if (pleinsGazoil) {
       tbodyGazoil.innerHTML = '';
@@ -3593,7 +3593,7 @@
     }
 
     // --- AdBlue : simple suivi, sans calcul de consommation ---
-    const pleinsAdblue = await appelApi('/pleins?type_carburant=adblue');
+    const pleinsAdblue = await appelApi(`/pleins?type_carburant=adblue&_=${Date.now()}`);
     const tbodyAdblue = document.getElementById('adblue-tbody');
     if (pleinsAdblue) {
       tbodyAdblue.innerHTML = '';
