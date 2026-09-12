@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Transports A.Blondel — Espace modérateur</title>
 <link rel="manifest" href="manifest-moderateur.json">
 <meta name="theme-color" content="#3E6FBF">
@@ -27,13 +27,19 @@
     --info: #6C9CFF;
   }
   *{box-sizing:border-box; margin:0; padding:0;}
-  html, body{height:100%;}
+  html, body{
+    height:100%;
+    width:100%;
+    overflow:hidden;
+  }
   body{
     background:var(--bg);
     color:var(--text);
     font-family:'IBM Plex Sans', -apple-system, sans-serif;
-    height:100vh;
-    height:100dvh;
+    height: 100vh;
+    height: -webkit-fill-available;
+    height: 100dvh;
+    height: calc(var(--vh-reel, 1vh) * 100);
   }
   .mono{font-family:'IBM Plex Mono', monospace;}
   .phone{
@@ -43,19 +49,8 @@
     overflow:hidden;
     display:flex; flex-direction:column;
     position:relative;
-  }
-  @media (min-width: 481px){
-    body{
-      background:#0B0E12;
-      display:flex; align-items:center; justify-content:center;
-      padding:24px 0;
-    }
-    .phone{
-      width:390px; max-width:100%;
-      height:760px; max-height:92vh;
-      border-radius:28px;
-      border:1px solid var(--line);
-    }
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
   }
   .screen{display:none; flex-direction:column; flex:1;}
   .screen.active{display:flex;}
@@ -1241,6 +1236,14 @@
       caches.keys().then((noms) => noms.forEach((nom) => caches.delete(nom)));
     }
   }
+
+  // Adapte l'affichage à la hauteur RÉELLE de l'écran de chaque téléphone.
+  function ajusterHauteurReelle() {
+    document.documentElement.style.setProperty('--vh-reel', `${window.innerHeight * 0.01}px`);
+  }
+  ajusterHauteurReelle();
+  window.addEventListener('resize', ajusterHauteurReelle);
+  window.addEventListener('orientationchange', ajusterHauteurReelle);
 </script>
 
 </body>
