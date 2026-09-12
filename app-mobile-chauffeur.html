@@ -1189,22 +1189,33 @@
   function depNumMissing(departNum) { return departNum === null; }
 
   document.getElementById('btn-cloturer').addEventListener('click', async () => {
+    let envoiReussi = false;
     if (authToken) {
       const cases = document.querySelectorAll('.home-frais');
       const cles = ['casse_croute', 'repas_nuit', 'repas', 'petit_decouche', 'grand_decouche'];
       const indemnites = {};
       cases.forEach((c, i) => { indemnites[cles[i]] = c.checked; });
       try {
-        await fetch(`${API_URL}/indemnites`, {
+        const reponse = await fetch(`${API_URL}/indemnites`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
           body: JSON.stringify(indemnites)
         });
-      } catch (e) { /* mode démonstration si l'API ne répond pas */ }
+        envoiReussi = reponse.ok;
+      } catch (e) { /* envoiReussi reste false */ }
     }
-    showBanner(missionValidee
-      ? `Clôture envoyée au modérateur ✓ (mission validée — ${nombreToursRealises} tour${nombreToursRealises > 1 ? 's' : ''})`
-      : 'Clôture envoyée au modérateur ✓ (mission non validée)');
+
+    if (envoiReussi) {
+      showBanner(missionValidee
+        ? `Clôture envoyée au modérateur ✓ (mission validée — ${nombreToursRealises} tour${nombreToursRealises > 1 ? 's' : ''})`
+        : 'Clôture envoyée au modérateur ✓ (mission non validée)');
+    } else if (authToken) {
+      showBanner('⚠️ Échec de l\'envoi — vérifiez votre connexion et réessayez.');
+    } else {
+      showBanner(missionValidee
+        ? `Clôture envoyée au modérateur ✓ (mode démonstration — mission validée)`
+        : 'Clôture envoyée au modérateur ✓ (mode démonstration)');
+    }
   });
 
   // --- Plein carburant : bascule Gazoil / AdBlue ---
