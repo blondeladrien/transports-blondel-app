@@ -673,42 +673,81 @@
           </div>
         </div>
 
-        <div class="panel">
-          <div class="panel-head">
-            <h2>Consommation par véhicule</h2>
-            <button class="btn" id="btn-add-plein">+ Ajouter un plein</button>
-          </div>
-          <div class="conso-summary" id="conso-summary"></div>
+        <div class="filter-bar" style="margin-bottom:20px;">
+          <button class="filter-btn active" data-carburant="gazoil">⛽ Gazoil</button>
+          <button class="filter-btn" data-carburant="adblue">🧴 AdBlue</button>
         </div>
 
-        <div class="panel" style="margin-top:20px;">
-          <div class="panel-head">
-            <h2>Consommation par chauffeur</h2>
-            <span style="font-size:12px; color:var(--text-dim);">Litres et coût cumulés par chauffeur</span>
+        <div id="conso-section-gazoil">
+          <div class="panel">
+            <div class="panel-head">
+              <h2>Consommation par véhicule</h2>
+              <button class="btn" id="btn-add-plein">+ Ajouter un plein</button>
+            </div>
+            <div class="conso-summary" id="conso-summary"></div>
           </div>
-          <div class="conso-summary" id="conso-summary-chauffeur"></div>
+
+          <div class="panel" style="margin-top:20px;">
+            <div class="panel-head">
+              <h2>Consommation par chauffeur</h2>
+              <span style="font-size:12px; color:var(--text-dim);">Litres et coût cumulés par chauffeur</span>
+            </div>
+            <div class="conso-summary" id="conso-summary-chauffeur"></div>
+          </div>
+
+          <div class="panel" style="margin-top:20px;">
+            <div class="panel-head">
+              <h2>Historique des pleins — Gazoil</h2>
+            </div>
+            <div style="overflow-x:auto;">
+              <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Véhicule</th>
+                  <th>Chauffeur</th>
+                  <th>Kilométrage</th>
+                  <th>Litres</th>
+                  <th>Prix total</th>
+                  <th>Conso.</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="conso-tbody"></tbody>
+            </table>
+            </div>
+          </div>
         </div>
 
-        <div class="panel" style="margin-top:20px;">
-          <div class="panel-head">
-            <h2>Historique des pleins</h2>
+        <div id="conso-section-adblue" style="display:none;">
+          <div class="panel">
+            <div class="panel-head">
+              <h2>AdBlue déclaré par chauffeur</h2>
+              <span style="font-size:12px; color:var(--text-dim);">Simple suivi des pleins, sans calcul de consommation</span>
+            </div>
+            <div class="conso-summary" id="adblue-summary-chauffeur"></div>
           </div>
-          <div style="overflow-x:auto;">
-            <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Véhicule</th>
-                <th>Chauffeur</th>
-                <th>Kilométrage</th>
-                <th>Litres</th>
-                <th>Prix total</th>
-                <th>Conso.</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="conso-tbody"></tbody>
-          </table>
+
+          <div class="panel" style="margin-top:20px;">
+            <div class="panel-head">
+              <h2>Historique des pleins — AdBlue</h2>
+              <button class="btn" id="btn-add-plein-adblue">+ Ajouter un plein</button>
+            </div>
+            <div style="overflow-x:auto;">
+              <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Véhicule</th>
+                  <th>Chauffeur</th>
+                  <th>Litres</th>
+                  <th>Prix total</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="adblue-tbody"></tbody>
+            </table>
+            </div>
           </div>
         </div>
       </div>
@@ -1283,6 +1322,50 @@
       <div class="modal-foot">
         <button class="btn-ghost" id="modal-add-plein-close-2">Annuler</button>
         <button class="btn" id="btn-create-plein">Ajouter le plein</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-add-plein-adblue-overlay">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <div class="modal-head-name">Ajouter un plein AdBlue</div>
+          <div class="modal-head-sub">Simple suivi, sans calcul de consommation</div>
+        </div>
+        <button class="modal-close" id="modal-add-plein-adblue-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="field-row">
+          <div class="field">
+            <label>Véhicule</label>
+            <select id="plein-adblue-vehicule">
+            </select>
+          </div>
+          <div class="field">
+            <label>Chauffeur</label>
+            <select id="plein-adblue-chauffeur">
+            </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Date</label>
+            <input type="date" id="plein-adblue-date">
+          </div>
+          <div class="field">
+            <label>Litres</label>
+            <input type="text" id="plein-adblue-litres" placeholder="ex. 10">
+          </div>
+        </div>
+        <div class="field">
+          <label>Prix total</label>
+          <input type="text" id="plein-adblue-prix" placeholder="ex. 25,00 €">
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn-ghost" id="modal-add-plein-adblue-close-2">Annuler</button>
+        <button class="btn" id="btn-create-plein-adblue">Ajouter le plein</button>
       </div>
     </div>
   </div>
@@ -1883,6 +1966,7 @@
     updateConsoFiltresOptions();
 
     await rafraichirAlertes();
+    await chargerPleinsReels();
   }
 
   async function rafraichirAlertes() {
@@ -3450,6 +3534,125 @@
   }
   updateConsoFiltresOptions();
 
+  async function chargerPleinsReels() {
+    // --- Gazoil : avec calcul de consommation (nécessite l'historique complet du véhicule) ---
+    const pleinsGazoil = await appelApi('/pleins?type_carburant=gazoil');
+    const tbodyGazoil = document.getElementById('conso-tbody');
+    if (pleinsGazoil) {
+      tbodyGazoil.innerHTML = '';
+      // Tri chronologique par véhicule pour calculer la conso par rapport au plein précédent
+      const parVehicule = {};
+      pleinsGazoil.forEach(p => {
+        if (!parVehicule[p.tracteur_immat]) parVehicule[p.tracteur_immat] = [];
+        parVehicule[p.tracteur_immat].push(p);
+      });
+      const lignesAAfficher = [];
+      Object.values(parVehicule).forEach(liste => {
+        liste.sort((a, b) => (a.kilometrage || 0) - (b.kilometrage || 0));
+        liste.forEach((p, idx) => {
+          let consoValeur = '';
+          let consoTexte = '— (référence)';
+          if (idx > 0) {
+            const precedent = liste[idx - 1];
+            const deltaKm = (p.kilometrage || 0) - (precedent.kilometrage || 0);
+            if (deltaKm > 0 && p.litres) {
+              const conso = (p.litres / deltaKm) * 100;
+              consoValeur = conso.toFixed(1);
+              consoTexte = conso.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' L/100km';
+            }
+          }
+          lignesAAfficher.push({ p, consoValeur, consoTexte });
+        });
+      });
+      // Réaffiche du plus récent au plus ancien, comme avant
+      lignesAAfficher.sort((a, b) => new Date(b.p.date_plein) - new Date(a.p.date_plein));
+      lignesAAfficher.forEach(({ p, consoValeur, consoTexte }) => {
+        const tr = document.createElement('tr');
+        tr.dataset.immat = p.tracteur_immat;
+        tr.dataset.date = p.date_plein;
+        tr.dataset.km = p.kilometrage || '';
+        tr.dataset.litres = p.litres || '';
+        tr.dataset.prix = p.prix_total != null ? p.prix_total.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €' : '—';
+        tr.dataset.conso = consoValeur;
+        tr.dataset.chauffeur = p.chauffeur_nom || '';
+        tr.dataset.serverId = p.id;
+        const dateAffichee = new Date(p.date_plein + 'T00:00:00').toLocaleDateString('fr-FR');
+        tr.innerHTML = `
+          <td class="mono">${dateAffichee}</td>
+          <td class="mono">${p.tracteur_immat}</td>
+          <td>${p.chauffeur_nom || '—'}</td>
+          <td class="mono">${p.kilometrage ? p.kilometrage.toLocaleString('fr-FR') + ' km' : '—'}</td>
+          <td class="mono">${p.litres ? p.litres + ' L' : '—'}</td>
+          <td class="mono">${tr.dataset.prix}</td>
+          <td class="mono">${consoTexte}</td>
+          <td><button class="btn-delete-row" title="Supprimer">🗑</button></td>
+        `;
+        tbodyGazoil.appendChild(tr);
+      });
+      afficherConsommation();
+    }
+
+    // --- AdBlue : simple suivi, sans calcul de consommation ---
+    const pleinsAdblue = await appelApi('/pleins?type_carburant=adblue');
+    const tbodyAdblue = document.getElementById('adblue-tbody');
+    if (pleinsAdblue) {
+      tbodyAdblue.innerHTML = '';
+      if (pleinsAdblue.length === 0) {
+        tbodyAdblue.innerHTML = '<tr><td colspan="6" class="placeholder" style="padding:24px;">Aucun plein AdBlue enregistré.</td></tr>';
+      }
+      const parChauffeurAdblue = {};
+      pleinsAdblue.forEach(p => {
+        const dateAffichee = new Date(p.date_plein + 'T00:00:00').toLocaleDateString('fr-FR');
+        const tr = document.createElement('tr');
+        tr.dataset.serverId = p.id;
+        tr.innerHTML = `
+          <td class="mono">${dateAffichee}</td>
+          <td class="mono">${p.tracteur_immat}</td>
+          <td>${p.chauffeur_nom || '—'}</td>
+          <td class="mono">${p.litres ? p.litres + ' L' : '—'}</td>
+          <td class="mono">${p.prix_total != null ? p.prix_total.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €' : '—'}</td>
+          <td><button class="btn-delete-row" title="Supprimer">🗑</button></td>
+        `;
+        tbodyAdblue.appendChild(tr);
+        tr.querySelector('.btn-delete-row').addEventListener('click', () => {
+          showConfirm(`Supprimer ce plein AdBlue du ${dateAffichee} ?`, async () => {
+            await appelApi(`/pleins/${p.id}`, { method: 'DELETE' });
+            tr.remove();
+          });
+        });
+
+        if (p.chauffeur_nom && p.litres) {
+          if (!parChauffeurAdblue[p.chauffeur_nom]) parChauffeurAdblue[p.chauffeur_nom] = { litres: 0, prix: 0 };
+          parChauffeurAdblue[p.chauffeur_nom].litres += p.litres;
+          parChauffeurAdblue[p.chauffeur_nom].prix += p.prix_total || 0;
+        }
+      });
+      const summaryAdblue = document.getElementById('adblue-summary-chauffeur');
+      const entriesAdblue = Object.entries(parChauffeurAdblue);
+      summaryAdblue.innerHTML = entriesAdblue.length === 0
+        ? '<div class="placeholder" style="padding:24px;">Aucun plein AdBlue enregistré.</div>'
+        : entriesAdblue.map(([nom, data]) => `
+            <div class="conso-card">
+              <div class="stat-label">${nom}</div>
+              <div class="stat-value ok">${data.litres.toLocaleString('fr-FR')} L</div>
+              <div style="font-size:12px; color:var(--text-dim); margin-top:4px;">${data.prix.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €</div>
+            </div>
+          `).join('');
+    }
+  }
+  chargerPleinsReels();
+
+  // Bascule entre les onglets Gazoil / AdBlue
+  document.querySelectorAll('#view-consommation .filter-bar .filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#view-consommation .filter-bar .filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const estAdblue = btn.dataset.carburant === 'adblue';
+      document.getElementById('conso-section-gazoil').style.display = estAdblue ? 'none' : 'block';
+      document.getElementById('conso-section-adblue').style.display = estAdblue ? 'block' : 'none';
+    });
+  });
+
   function afficherConsommation() {
     const filtres = getConsoFiltres();
     document.querySelectorAll('#conso-tbody tr').forEach(row => {
@@ -3581,7 +3784,10 @@
     const delBtn = e.target.closest('.btn-delete-row');
     if (delBtn) {
       const row = delBtn.closest('tr');
-      showConfirm(`Supprimer ce plein du ${row.querySelector('td:nth-child(1)').textContent} ?`, () => {
+      showConfirm(`Supprimer ce plein du ${row.querySelector('td:nth-child(1)').textContent} ?`, async () => {
+        if (row.dataset.serverId) {
+          await appelApi(`/pleins/${row.dataset.serverId}`, { method: 'DELETE' });
+        }
         row.remove();
         updateConsoSummary();
         updateConsoSummaryChauffeur();
@@ -3596,6 +3802,47 @@
   document.getElementById('modal-add-plein-close').addEventListener('click', closeAddPleinModal);
   document.getElementById('modal-add-plein-close-2').addEventListener('click', closeAddPleinModal);
   addPleinOverlay.addEventListener('click', (e) => { if (e.target === addPleinOverlay) closeAddPleinModal(); });
+
+  const addPleinAdblueOverlay = document.getElementById('modal-add-plein-adblue-overlay');
+  const closeAddPleinAdblueModal = () => addPleinAdblueOverlay.classList.remove('active');
+  document.getElementById('btn-add-plein-adblue').addEventListener('click', () => {
+    // Synchronise les menus véhicule/chauffeur à partir de ceux déjà à jour côté gazoil
+    document.getElementById('plein-adblue-vehicule').innerHTML = document.getElementById('plein-vehicule').innerHTML;
+    document.getElementById('plein-adblue-chauffeur').innerHTML = document.getElementById('plein-chauffeur').innerHTML;
+    addPleinAdblueOverlay.classList.add('active');
+  });
+  document.getElementById('modal-add-plein-adblue-close').addEventListener('click', closeAddPleinAdblueModal);
+  document.getElementById('modal-add-plein-adblue-close-2').addEventListener('click', closeAddPleinAdblueModal);
+  addPleinAdblueOverlay.addEventListener('click', (e) => { if (e.target === addPleinAdblueOverlay) closeAddPleinAdblueModal(); });
+
+  document.getElementById('btn-create-plein-adblue').addEventListener('click', async () => {
+    const immat = document.getElementById('plein-adblue-vehicule').value;
+    const chauffeur = document.getElementById('plein-adblue-chauffeur').value;
+    const dateRaw = document.getElementById('plein-adblue-date').value;
+    const litres = parseFloat(document.getElementById('plein-adblue-litres').value.replace(',', '.')) || null;
+    const prix = parseEuro(document.getElementById('plein-adblue-prix').value || '0');
+
+    let tracteurServerId = null, chauffeurServerId = null;
+    document.querySelectorAll('#tracteur-tbody tr').forEach(l => { if (l.querySelector('td:nth-child(1)').textContent === immat) tracteurServerId = l.dataset.serverId || null; });
+    document.querySelectorAll('#chauffeur-tbody tr').forEach(l => { if (l.dataset.name === chauffeur) chauffeurServerId = l.dataset.serverId || null; });
+
+    if (tracteurServerId) {
+      await appelApi('/pleins', {
+        method: 'POST',
+        body: JSON.stringify({
+          tracteur_id: tracteurServerId, chauffeur_id: chauffeurServerId,
+          type_carburant: 'adblue', date_plein: dateRaw || new Date().toISOString().slice(0, 10),
+          litres: litres, prix_total: prix || null
+        })
+      });
+      await chargerPleinsReels();
+    }
+
+    document.getElementById('plein-adblue-date').value = '';
+    document.getElementById('plein-adblue-litres').value = '';
+    document.getElementById('plein-adblue-prix').value = '';
+    closeAddPleinAdblueModal();
+  });
 
   document.getElementById('btn-create-plein').addEventListener('click', async () => {
     const immat = document.getElementById('plein-vehicule').value;
