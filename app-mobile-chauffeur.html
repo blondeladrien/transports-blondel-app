@@ -336,6 +336,13 @@
 
       <div class="mobile-view" id="mobile-view-plein">
         <div class="card">
+          <div class="card-title">Consommation de mon véhicule</div>
+          <div class="mission-row"><span class="mission-label">Véhicule</span><span class="mission-value" id="conso-vehicule-nom">—</span></div>
+          <div class="mission-row"><span class="mission-label">Conso. moyenne</span><span class="mission-value mono" id="conso-moyenne">—</span></div>
+          <div id="conso-historique" style="margin-top:12px;"></div>
+          <button class="btn-secondary" id="btn-ouvrir-conso-detail" style="margin-top:12px;">📊 Voir le détail complet</button>
+        </div>
+        <div class="card">
           <div class="card-title">Plein carburant</div>
           <div class="plein-tabs">
             <button class="plein-tab active" data-plein-tab="gazoil">Gazoil</button>
@@ -597,6 +604,21 @@
         <div class="mobile-modal-foot">
           <button class="btn-primary" id="btn-valider-accepter-mission">✅ Accepter la mission</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mobile-modal-overlay" id="modal-conso-detail-overlay">
+    <div class="mobile-modal" style="max-height:80vh; display:flex; flex-direction:column;">
+      <div class="mobile-modal-head">
+        <div class="mobile-modal-head-title">Détail de ma consommation</div>
+        <div class="mobile-modal-head-sub" id="conso-detail-vehicule-nom">—</div>
+      </div>
+      <div class="mobile-modal-body" style="overflow-y:auto;">
+        <div id="conso-detail-liste"></div>
+      </div>
+      <div class="mobile-modal-foot">
+        <button class="btn-primary" id="modal-conso-detail-fermer">Fermer</button>
       </div>
     </div>
   </div>
@@ -945,8 +967,96 @@
     if (reponseDocuments.ok) {
       afficherMesDocuments(await reponseDocuments.json());
     }
+    chargerMaConsommation();
     return true;
   }
+
+  // Calcule et affiche la consommation (L/100km) du SEUL véhicule attitré au chauffeur connecté.
+  // Le serveur restreint déjà cette route à son propre véhicule ; aucun autre chauffeur n'est visible.
+  let consosCalculeesCompletes = [];
+  async function chargerMaConsommation() {
+    if (!authToken) return;
+    try {
+      const reponse = await fetchAvecDelai(`${API_URL}/pleins?type_carburant=gazoil`, { headers: { 'Authorization': `Bearer ${authToken}` } }, 15000);
+      if (!reponse.ok) return;
+      const pleins = await reponse.json();
+
+      document.getElementById('conso-vehicule-nom').textContent = document.getElementById('home-tracteur').textContent || '—';
+
+      if (!pleins.length) {
+        document.getElementById('conso-moyenne').textContent = '—';
+        document.getElementById('conso-historique').innerHTML = '<div class="file-name">Aucun plein enregistré pour l\'instant.</div>';
+        consosCalculeesCompletes = [];
+        return;
+      }
+
+      // Tri chronologique (le plus ancien d'abord) pour calculer la conso par rapport au plein précédent.
+      // Remonte tout l'historique du véhicule, y compris les pleins saisis par le modérateur ou
+      // par un chauffeur précédent — la consommation d'un véhicule lui appartient, pas au chauffeur.
+      const parKm = [...pleins].sort((a, b) => (a.kilometrage || 0) - (b.kilometrage || 0));
+      consosCalculeesCompletes = [];
+      parKm.forEach((p, idx) => {
+        if (idx === 0) {
+          consosCalculeesCompletes.push({ date: p.date_plein, km: p.kilometrage, litres: p.litres, prix: p.prix_total, conso: null });
+          return;
+        }
+        const precedent = parKm[idx - 1];
+        const deltaKm = (p.kilometrage || 0) - (precedent.kilometrage || 0);
+        const conso = (deltaKm > 0 && p.litres) ? (p.litres / deltaKm) * 100 : null;
+        consosCalculeesCompletes.push({ date: p.date_plein, km: p.kilometrage, litres: p.litres, prix: p.prix_total, conso });
+      });
+
+      const avecConso = consosCalculeesCompletes.filter(c => c.conso !== null);
+      if (avecConso.length === 0) {
+        document.getElementById('conso-moyenne').textContent = 'Pas encore assez de pleins';
+      } else {
+        const moyenne = avecConso.reduce((s, c) => s + c.conso, 0) / avecConso.length;
+        document.getElementById('conso-moyenne').textContent = moyenne.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' L/100km';
+      }
+
+      // Aperçu rapide : les 5 derniers seulement (le détail complet s'ouvre via le bouton dédié)
+      const historique = avecConso.slice(-5).reverse();
+      document.getElementById('conso-historique').innerHTML = historique.map(c => {
+        const dateAffichee = new Date(c.date + 'T00:00:00').toLocaleDateString('fr-FR');
+        return `<div class="mission-row"><span class="mission-label">${dateAffichee}</span><span class="mission-value mono">${c.conso.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} L/100km</span></div>`;
+      }).join('') || '<div class="file-name">Un premier plein de référence a été enregistré — la conso apparaîtra au suivant.</div>';
+    } catch (e) { /* pas grave, la carte reste affichée avec ses valeurs par défaut */ }
+  }
+
+  // Ouvre le détail complet — tout l'historique du véhicule, du plus récent au plus ancien,
+  // exactement comme le modérateur peut le voir sur le web (onglet Conso carburant).
+  document.getElementById('btn-ouvrir-conso-detail').addEventListener('click', () => {
+    document.getElementById('conso-detail-vehicule-nom').textContent = document.getElementById('home-tracteur').textContent || '—';
+    const liste = document.getElementById('conso-detail-liste');
+
+    if (consosCalculeesCompletes.length === 0) {
+      liste.innerHTML = '<div class="file-name">Aucun plein enregistré pour ce véhicule pour l\'instant.</div>';
+    } else {
+      const parDateDesc = [...consosCalculeesCompletes].reverse();
+      liste.innerHTML = parDateDesc.map(c => {
+        const dateAffichee = new Date(c.date + 'T00:00:00').toLocaleDateString('fr-FR');
+        const consoTexte = c.conso !== null
+          ? `${c.conso.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} L/100km`
+          : '— (référence)';
+        return `
+          <div class="card" style="margin-bottom:10px; padding:12px;">
+            <div class="mission-row"><span class="mission-label">Date</span><span class="mission-value mono">${dateAffichee}</span></div>
+            <div class="mission-row"><span class="mission-label">Kilométrage</span><span class="mission-value mono">${c.km ? c.km.toLocaleString('fr-FR') + ' km' : '—'}</span></div>
+            <div class="mission-row"><span class="mission-label">Litres</span><span class="mission-value mono">${c.litres ? c.litres + ' L' : '—'}</span></div>
+            <div class="mission-row"><span class="mission-label">Prix</span><span class="mission-value mono">${c.prix != null ? c.prix.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €' : '—'}</span></div>
+            <div class="mission-row"><span class="mission-label">Conso.</span><span class="mission-value mono">${consoTexte}</span></div>
+          </div>
+        `;
+      }).join('');
+    }
+    document.getElementById('modal-conso-detail-overlay').classList.add('active');
+  });
+  document.getElementById('modal-conso-detail-fermer').addEventListener('click', () => {
+    document.getElementById('modal-conso-detail-overlay').classList.remove('active');
+  });
+  document.getElementById('modal-conso-detail-overlay').addEventListener('click', (e) => {
+    if (e.target.id === 'modal-conso-detail-overlay') e.target.classList.remove('active');
+  });
 
   // Au chargement de la page : si un jeton a été mémorisé lors d'une connexion précédente,
   // on reconnecte automatiquement le chauffeur sans lui redemander ses identifiants.
@@ -1499,6 +1609,7 @@
       envoiReussi = false;
     }
     showBanner(envoiReussi ? 'Plein gazoil envoyé au modérateur ✓' : "⚠️ Échec de l'envoi — vérifiez votre connexion (ou qu'un véhicule est bien attribué) et réessayez.");
+    if (envoiReussi) chargerMaConsommation();
     document.getElementById('gazoil-date').value = '';
     document.getElementById('gazoil-km').value = '';
     document.getElementById('gazoil-litres').value = '';
@@ -1561,6 +1672,7 @@
     showBanner(envoiReussi
       ? `Changement enregistré — ${tracteurTexte} / ${remorqueTexte} ✓`
       : "⚠️ Échec de l'envoi — vérifiez votre connexion et réessayez.");
+    if (envoiReussi) chargerMaConsommation();
   });
 
   // --- Kilométrage départ (matin) ---
