@@ -604,6 +604,7 @@
                   <th>Statut</th>
                   <th>Km parcourus</th>
                   <th>Indemnités</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody id="planning-mensuel-tbody"></tbody>
@@ -1999,6 +2000,7 @@
     await rafraichirAlertes();
     await chargerPleinsReels();
     afficherTICPE();
+    await chargerFacturationReelle();
   }
 
   async function rafraichirAlertes() {
@@ -2199,6 +2201,7 @@
       if (key === 'cloture') { updateTotalMois(); updateAchatsTotalMois(); }
       if (key === 'achats-exceptionnels') updateAchatsProTotalMois();
       if (key === 'ticpe') afficherTICPE();
+      if (key === 'facturation') chargerFacturationReelle();
     });
   });
 
@@ -2639,6 +2642,9 @@
         else if (mission.acceptee) statutTexte = '<span class="chip info"><span class="chip-dot"></span> Acceptée</span>';
         else statutTexte = '<span class="chip warn"><span class="chip-dot"></span> À venir</span>';
       }
+      const boutonSupprimer = mission
+        ? `<button class="btn-delete-row btn-supprimer-mission-planning" data-mission-id="${mission.id}" title="Supprimer cette mission">🗑</button>`
+        : '';
       return `
         <tr>
           <td class="mono">${dateAffichee}</td>
@@ -2646,6 +2652,7 @@
           <td>${statutTexte}</td>
           <td class="mono">${kmTexte}</td>
           <td>${indemTexte}</td>
+          <td>${boutonSupprimer}</td>
         </tr>
       `;
     }
@@ -2687,6 +2694,16 @@
     vide.style.display = 'none';
     document.getElementById('planning-resume').textContent =
       `${joursTravailles} jour${joursTravailles > 1 ? 's' : ''} avec mission · ${totalIndemnites.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} € d'indemnités sur le mois`;
+
+    tbody.querySelectorAll('.btn-supprimer-mission-planning').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const missionId = btn.dataset.missionId;
+        showConfirm('Supprimer définitivement cette mission ? Sa ligne de facturation sera aussi supprimée, sauf si elle a déjà un numéro de facture.', async () => {
+          await appelApi(`/missions/${missionId}`, { method: 'DELETE' });
+          chargerPlanningMensuel();
+        });
+      });
+    });
   }
 
   document.getElementById('planning-chauffeur-select').addEventListener('change', chargerPlanningMensuel);
@@ -2716,7 +2733,12 @@
     const delBtn = row.querySelector('.btn-delete-row');
     delBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      showConfirm(`Supprimer cette ligne de facturation (${row.dataset.client}) ?`, () => row.remove());
+      showConfirm(`Supprimer cette ligne de facturation (${row.dataset.client}) ?`, async () => {
+        if (row.dataset.serverId) {
+          await appelApi(`/facturation/${row.dataset.serverId}`, { method: 'DELETE' });
+        }
+        row.remove();
+      });
     });
   }
 
@@ -2749,6 +2771,38 @@
 
     closeFacturerLigneModal();
   });
+
+  async function chargerFacturationReelle() {
+    const lignes = await appelApi('/facturation');
+    const tbody = document.getElementById('facturation-tbody');
+    if (!lignes) return; // backend injoignable : on laisse le contenu local existant (démo)
+
+    tbody.innerHTML = '';
+    lignes.forEach(l => {
+      const dateAffichee = new Date(l.date_mission + 'T00:00:00').toLocaleDateString('fr-FR');
+      const avatar = l.chauffeur_nom.split(' ').map(p => p[0]).join('').toUpperCase();
+      const tr = document.createElement('tr');
+      tr.className = l.numero_facture ? 'facture-row facturee' : 'facture-row non-facturee';
+      tr.dataset.date = l.date_mission;
+      tr.dataset.client = l.client;
+      tr.dataset.chauffeurNom = l.chauffeur_nom;
+      tr.dataset.numero = l.numero_facture || '';
+      tr.dataset.dateFacturation = l.date_facturation || '';
+      tr.dataset.serverId = l.id;
+      tr.innerHTML = `
+        <td><div class="driver"><div class="avatar">${avatar}</div> ${l.chauffeur_nom}</div></td>
+        <td class="mono">${dateAffichee}</td>
+        <td>${l.client}</td>
+        <td class="cell-numero mono">${l.numero_facture || '—'}</td>
+        <td class="cell-date-facturation mono">${l.date_facturation ? new Date(l.date_facturation + 'T00:00:00').toLocaleDateString('fr-FR') : '—'}</td>
+        <td><button class="btn-delete-row" title="Supprimer">🗑</button></td>
+      `;
+      tbody.appendChild(tr);
+      attachFacturationRowListener(tr);
+    });
+    afficherFacturation();
+  }
+  chargerFacturationReelle();
 
   function afficherFacturation() {
     const periode = getPeriodeFacturation();
@@ -3692,6 +3746,7 @@
       await updateTotalMois();
       await updateAchatsTotalMois();
       await updateAchatsProTotalMois();
+      await chargerFacturationReelle();
     } else {
       afficherErreurApi('Backend non connecté — impossible de rafraîchir les données réelles.');
     }
