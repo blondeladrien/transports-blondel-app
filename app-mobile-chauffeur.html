@@ -1082,14 +1082,16 @@
     kmDepart = valeur;
     document.getElementById('km-depart-affiche').textContent = kmDepart + ' km';
 
+    let envoiReussi = true;
     if (authToken) {
       try {
-        await fetch(`${API_URL}/declarations/km-depart`, {
+        const reponse = await fetch(`${API_URL}/declarations/km-depart`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
           body: JSON.stringify({ km_depart: parseInt(valeur.replace(/[^\d]/g, ''), 10) })
         });
-      } catch (e) { /* mode démonstration si l'API ne répond pas */ }
+        envoiReussi = reponse.ok;
+      } catch (e) { envoiReussi = false; }
     }
 
     if (!fonctionMissionValide()) {
@@ -1098,8 +1100,12 @@
       document.getElementById('btn-demarrer-journee').textContent = '✓ Journée démarrée';
       document.getElementById('btn-demarrer-journee').classList.add('validated');
       fermerDemarrerOverlay();
-      showBanner('Kilométrage départ enregistré ✓');
+      showBanner(envoiReussi ? 'Kilométrage départ enregistré ✓' : "⚠️ Échec de l'envoi au serveur — vérifiez votre connexion.");
       return;
+    }
+
+    if (!envoiReussi) {
+      showBanner("⚠️ Échec de l'envoi du kilométrage — vérifiez votre connexion et réessayez.");
     }
 
     document.getElementById('demarrer-trajet').textContent = document.getElementById('home-trajet').textContent;
@@ -1201,33 +1207,46 @@
       kmJourTexte = 'Kilométrage départ non renseigné — impossible de calculer la distance';
     }
 
+    // Persistance réelle : km arrivée + validation de la mission (déclenche la facturation côté serveur).
+    // On vérifie VRAIMENT si chaque envoi a réussi, au lieu d'afficher un succès systématique.
+    let kmEnvoiReussi = true;   // reste vrai si rien à envoyer (pas de km renseigné)
+    let missionEnvoiReussi = true;
+    if (authToken) {
+      try {
+        if (arriveeNum !== null) {
+          const reponseKm = await fetch(`${API_URL}/declarations/km-arrivee`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+            body: JSON.stringify({ km_arrivee: arriveeNum })
+          });
+          kmEnvoiReussi = reponseKm.ok;
+        }
+        if (compteActuel && compteActuel.missionId) {
+          const reponseMission = await fetch(`${API_URL}/missions/${compteActuel.missionId}/valider`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+            body: JSON.stringify({ nombre_tours: nombreToursRealises, remarque: remarqueMission })
+          });
+          missionEnvoiReussi = reponseMission.ok;
+        }
+      } catch (e) {
+        kmEnvoiReussi = false;
+        missionEnvoiReussi = false;
+      }
+    }
+
     btnValiderMission.classList.add('validated');
     btnValiderMission.textContent = `✓ Mission validée (${toursTexte})`;
     document.getElementById('mission-valide-statut').innerHTML =
       `Validée — ${toursTexte} réalisé${nombreToursRealises > 1 ? 's' : ''}` +
       (kmArrivee ? `<br>Km arrivée : ${kmArrivee}` : '') +
       (kmJourTexte ? `<br>${kmJourTexte}` : '') +
-      (remarqueMission ? `<br>Remarque : ${remarqueMission}` : '');
+      (remarqueMission ? `<br>Remarque : ${remarqueMission}` : '') +
+      (!kmEnvoiReussi || !missionEnvoiReussi ? '<br><strong style="color:var(--danger);">⚠️ Échec de l\'envoi au serveur — réessayez avec du réseau.</strong>' : '');
     toursOverlay.classList.remove('active');
 
-    // Persistance réelle : km arrivée + validation de la mission (déclenche la facturation côté serveur)
-    if (authToken) {
-      try {
-        if (arriveeNum !== null) {
-          await fetch(`${API_URL}/declarations/km-arrivee`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
-            body: JSON.stringify({ km_arrivee: arriveeNum })
-          });
-        }
-        if (compteActuel && compteActuel.missionId) {
-          await fetch(`${API_URL}/missions/${compteActuel.missionId}/valider`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
-            body: JSON.stringify({ nombre_tours: nombreToursRealises, remarque: remarqueMission })
-          });
-        }
-      } catch (e) { /* mode démonstration si l'API ne répond pas */ }
+    if (!kmEnvoiReussi || !missionEnvoiReussi) {
+      showBanner("⚠️ Échec de l'envoi au serveur — vérifiez votre connexion et réessayez.");
     }
 
     // Mémorise le km d'arrivée et le tracteur utilisé pour la reprise automatique du lendemain
