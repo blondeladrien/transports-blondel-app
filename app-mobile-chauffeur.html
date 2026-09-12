@@ -32,8 +32,8 @@
   .mono{font-family:'IBM Plex Mono', monospace;}
   .phone{
     width:390px; max-width:100%;
+    height:760px; max-height:92vh;
     background:var(--bg);
-    min-height:760px;
     border-radius:28px;
     border:1px solid var(--line);
     overflow:hidden;
@@ -501,6 +501,9 @@
             <div id="doc-adr"></div>
           </div>
         </div>
+        <div class="card">
+          <button class="btn-secondary" id="btn-deconnexion-chauffeur" style="color:var(--danger); border-color:var(--danger);">Se déconnecter</button>
+        </div>
       </div>
     </div>
 
@@ -876,6 +879,43 @@
     });
   }
 
+  // Charge la session complète (profil, missions, flotte) à partir d'un jeton déjà valide,
+  // et mémorise ce jeton pour reconnecter automatiquement le chauffeur la prochaine fois.
+  async function chargerSessionAvecToken(token) {
+    const [reponseMoi, reponseMissions, reponseTracteurs, reponseRemorques] = await Promise.all([
+      fetchAvecDelai(`${API_URL}/chauffeurs/me`, { headers: { 'Authorization': `Bearer ${token}` } }),
+      fetchAvecDelai(`${API_URL}/missions`, { headers: { 'Authorization': `Bearer ${token}` } }),
+      fetchAvecDelai(`${API_URL}/tracteurs`, { headers: { 'Authorization': `Bearer ${token}` } }),
+      fetchAvecDelai(`${API_URL}/remorques`, { headers: { 'Authorization': `Bearer ${token}` } })
+    ]);
+    if (!reponseMoi.ok) return false;
+    authToken = token;
+    localStorage.setItem('authTokenChauffeur', token);
+    const monChauffeur = await reponseMoi.json();
+    const missions = await reponseMissions.json();
+    const tracteursFlotte = await reponseTracteurs.json();
+    const remorquesFlotte = await reponseRemorques.json();
+    const compte = await chargerCompteDepuisAPI(monChauffeur, missions);
+    afficherEspacePersonnel(compte);
+    peuplerMenusVehicules(tracteursFlotte, remorquesFlotte, compte);
+    return true;
+  }
+
+  // Au chargement de la page : si un jeton a été mémorisé lors d'une connexion précédente,
+  // on reconnecte automatiquement le chauffeur sans lui redemander ses identifiants.
+  (async function reconnexionAutomatique() {
+    const tokenMemorise = localStorage.getItem('authTokenChauffeur');
+    if (!tokenMemorise) return;
+    try {
+      const reussi = await chargerSessionAvecToken(tokenMemorise);
+      if (reussi) showBanner('Reconnecté automatiquement ✓');
+      else localStorage.removeItem('authTokenChauffeur'); // jeton expiré ou invalide
+    } catch (e) {
+      // Backend injoignable au démarrage : on laisse l'écran de connexion, la reconnexion
+      // automatique réessaiera au prochain lancement de l'app.
+    }
+  })();
+
   document.getElementById('btn-login').addEventListener('click', async () => {
     const user = document.getElementById('login-user').value.trim().toLowerCase();
     const pass = document.getElementById('login-pass').value;
@@ -902,24 +942,9 @@
           errorEl.style.display = 'block';
           return;
         }
-        authToken = token;
-        const [reponseMoi, reponseMissions, reponseTracteurs, reponseRemorques] = await Promise.all([
-          fetchAvecDelai(`${API_URL}/chauffeurs/me`, { headers: { 'Authorization': `Bearer ${token}` } }),
-          fetchAvecDelai(`${API_URL}/missions`, { headers: { 'Authorization': `Bearer ${token}` } }),
-          fetchAvecDelai(`${API_URL}/tracteurs`, { headers: { 'Authorization': `Bearer ${token}` } }),
-          fetchAvecDelai(`${API_URL}/remorques`, { headers: { 'Authorization': `Bearer ${token}` } })
-        ]);
-        const missions = await reponseMissions.json();
-        const tracteursFlotte = await reponseTracteurs.json();
-        const remorquesFlotte = await reponseRemorques.json();
-        // Fiabilisé : /api/chauffeurs/me renvoie exactement et uniquement la fiche du compte connecté,
-        // il ne peut donc jamais afficher les données d'un autre chauffeur, même s'il y en a plusieurs.
-        if (reponseMoi.ok) {
-          const monChauffeur = await reponseMoi.json();
+        const reussi = await chargerSessionAvecToken(token);
+        if (reussi) {
           errorEl.style.display = 'none';
-          const compte = await chargerCompteDepuisAPI(monChauffeur, missions);
-          afficherEspacePersonnel(compte);
-          peuplerMenusVehicules(tracteursFlotte, remorquesFlotte, compte);
           showBanner('Connecté au serveur réel ✓');
           return;
         }
@@ -1355,6 +1380,16 @@
       navBtn.classList.add('active');
       document.getElementById('mobile-view-' + navBtn.dataset.mobileView).classList.add('active');
     });
+  });
+
+  // --- Déconnexion : efface la mémorisation et revient à l'écran de connexion ---
+  document.getElementById('btn-deconnexion-chauffeur').addEventListener('click', () => {
+    localStorage.removeItem('authTokenChauffeur');
+    authToken = null;
+    compteActuel = null;
+    document.getElementById('login-user').value = '';
+    document.getElementById('login-pass').value = '';
+    showScreen('screen-login');
   });
 </script>
 
