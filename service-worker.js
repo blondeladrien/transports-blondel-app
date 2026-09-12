@@ -1,6 +1,6 @@
 // Service worker minimal — nécessaire pour que le navigateur autorise l'installation de l'app.
 // Met simplement la page en cache pour un chargement plus rapide (et un accès de secours hors connexion).
-const CACHE_NOM = 'transports-blondel-v2';
+const CACHE_NOM = 'transports-blondel-v3';
  
 self.addEventListener('install', (evenement) => {
   self.skipWaiting();
