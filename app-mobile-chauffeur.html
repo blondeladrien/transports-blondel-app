@@ -26,9 +26,11 @@
     --danger: #EF5A63;
     --info: #6C9CFF;
   }
-  *{box-sizing:border-box; margin:0; padding:0;}
+  *{box-sizing:border-box; margin:0; padding:0; max-width:100%;}
   html, body{
     width:100%;
+    max-width:100vw;
+    overflow-x:hidden;
     /* Le document défile normalement, comme n'importe quelle page web classique —
        plus besoin de calculer une hauteur d'écran exacte. */
   }
