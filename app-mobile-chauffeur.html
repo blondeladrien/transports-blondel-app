@@ -858,6 +858,25 @@
       opt.textContent = r.immatriculation;
       selectRemorque.appendChild(opt);
     });
+
+    // Menus véhicule des pleins (gazoil / AdBlue) : présélectionnés sur le tracteur du chauffeur,
+    // mais modifiables (ex. plein sur un véhicule de dépannage).
+    ['gazoil-vehicule', 'adblue-vehicule'].forEach(idSelect => {
+      const select = document.getElementById(idSelect);
+      if (!select) return;
+      select.innerHTML = '';
+      if ((tracteursFlotte || []).length === 0) {
+        select.innerHTML = '<option value="">Non attribué</option>';
+        return;
+      }
+      tracteursFlotte.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id;
+        opt.textContent = t.immatriculation;
+        if (compte.tracteurId && t.id === compte.tracteurId) opt.selected = true;
+        select.appendChild(opt);
+      });
+    });
   }
 
   // Charge la session complète (profil, missions, flotte) à partir d'un jeton déjà valide,
@@ -1275,7 +1294,8 @@
   });
 
   document.getElementById('btn-plein-gazoil').addEventListener('click', async () => {
-    if (authToken && compteActuel && compteActuel.tracteurId) {
+    const tracteurChoisi = document.getElementById('gazoil-vehicule').value || (compteActuel && compteActuel.tracteurId);
+    if (authToken && tracteurChoisi) {
       const litres = document.getElementById('gazoil-litres').value.trim();
       const km = document.getElementById('gazoil-km').value.trim();
       const prix = document.getElementById('gazoil-prix').value.trim();
@@ -1284,7 +1304,7 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
           body: JSON.stringify({
-            tracteur_id: compteActuel.tracteurId,
+            tracteur_id: parseInt(tracteurChoisi, 10),
             type_carburant: 'gazoil',
             date_plein: document.getElementById('gazoil-date').value || new Date().toISOString().slice(0, 10),
             kilometrage: parseInt(km.replace(/[^\d]/g, ''), 10) || null,
@@ -1302,7 +1322,8 @@
   });
 
   document.getElementById('btn-plein-adblue').addEventListener('click', async () => {
-    if (authToken && compteActuel && compteActuel.tracteurId) {
+    const tracteurChoisi = document.getElementById('adblue-vehicule').value || (compteActuel && compteActuel.tracteurId);
+    if (authToken && tracteurChoisi) {
       const litres = document.getElementById('adblue-litres').value.trim();
       const prix = document.getElementById('adblue-prix').value.trim();
       try {
@@ -1310,7 +1331,7 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
           body: JSON.stringify({
-            tracteur_id: compteActuel.tracteurId,
+            tracteur_id: parseInt(tracteurChoisi, 10),
             type_carburant: 'adblue',
             date_plein: document.getElementById('adblue-date').value || new Date().toISOString().slice(0, 10),
             litres: parseFloat(litres.replace(',', '.')) || null,
