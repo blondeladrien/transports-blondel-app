@@ -881,12 +881,49 @@
 
   // Charge la session complète (profil, missions, flotte) à partir d'un jeton déjà valide,
   // et mémorise ce jeton pour reconnecter automatiquement le chauffeur la prochaine fois.
+  function joursRestants(dateISO) {
+    const aujourdhui = new Date();
+    aujourdhui.setHours(0, 0, 0, 0);
+    const cible = new Date(dateISO + 'T00:00:00');
+    return Math.round((cible - aujourdhui) / (1000 * 60 * 60 * 24));
+  }
+
+  function afficherChipDocument(elementId, dateISO) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    if (!dateISO) {
+      el.innerHTML = '<span class="chip">Non renseigné</span>';
+      return;
+    }
+    const jours = joursRestants(dateISO);
+    const dateAffichee = new Date(dateISO + 'T00:00:00').toLocaleDateString('fr-FR');
+    if (jours < 0) {
+      el.innerHTML = `<span class="chip danger"><span class="chip-dot"></span> Expiré (${dateAffichee})</span>`;
+    } else if (jours <= 30) {
+      el.innerHTML = `<span class="chip danger"><span class="chip-dot"></span> Urgent — ${jours} j</span>`;
+    } else if (jours <= 60) {
+      el.innerHTML = `<span class="chip warn"><span class="chip-dot"></span> À renouveler — ${jours} j</span>`;
+    } else {
+      el.innerHTML = `<span class="chip ok"><span class="chip-dot"></span> ${dateAffichee}</span>`;
+    }
+  }
+
+  function afficherMesDocuments(docs) {
+    afficherChipDocument('doc-carteIdentite', docs.carte_identite);
+    afficherChipDocument('doc-permis', docs.permis);
+    afficherChipDocument('doc-passeport', docs.passeport);
+    afficherChipDocument('doc-carteConducteur', docs.carte_conducteur);
+    afficherChipDocument('doc-chronotachygraphe', docs.chronotachygraphe);
+    afficherChipDocument('doc-adr', docs.adr);
+  }
+
   async function chargerSessionAvecToken(token) {
-    const [reponseMoi, reponseMissions, reponseTracteurs, reponseRemorques] = await Promise.all([
+    const [reponseMoi, reponseMissions, reponseTracteurs, reponseRemorques, reponseDocuments] = await Promise.all([
       fetchAvecDelai(`${API_URL}/chauffeurs/me`, { headers: { 'Authorization': `Bearer ${token}` } }),
       fetchAvecDelai(`${API_URL}/missions`, { headers: { 'Authorization': `Bearer ${token}` } }),
       fetchAvecDelai(`${API_URL}/tracteurs`, { headers: { 'Authorization': `Bearer ${token}` } }),
-      fetchAvecDelai(`${API_URL}/remorques`, { headers: { 'Authorization': `Bearer ${token}` } })
+      fetchAvecDelai(`${API_URL}/remorques`, { headers: { 'Authorization': `Bearer ${token}` } }),
+      fetchAvecDelai(`${API_URL}/documents/chauffeurs/me`, { headers: { 'Authorization': `Bearer ${token}` } })
     ]);
     if (!reponseMoi.ok) return false;
     authToken = token;
@@ -898,6 +935,9 @@
     const compte = await chargerCompteDepuisAPI(monChauffeur, missions);
     afficherEspacePersonnel(compte);
     peuplerMenusVehicules(tracteursFlotte, remorquesFlotte, compte);
+    if (reponseDocuments.ok) {
+      afficherMesDocuments(await reponseDocuments.json());
+    }
     return true;
   }
 
