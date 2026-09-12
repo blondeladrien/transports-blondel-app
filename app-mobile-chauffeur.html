@@ -28,40 +28,30 @@
   }
   *{box-sizing:border-box; margin:0; padding:0;}
   html, body{
-    height:100%;
     width:100%;
-    overflow:hidden; /* empêche le fond de la page de défiler ; seul .home-content défile, en interne */
+    /* Le document défile normalement, comme n'importe quelle page web classique —
+       plus besoin de calculer une hauteur d'écran exacte. */
   }
   body{
     background:var(--bg);
     color:var(--text);
     font-family:'IBM Plex Sans', -apple-system, sans-serif;
-    /* Empile plusieurs unités de hauteur : le navigateur retient la dernière qu'il comprend.
-       100dvh (hauteur "dynamique" du vrai écran visible) est la plus fiable sur mobile récent ;
-       les deux autres servent de filet de sécurité sur les navigateurs plus anciens. */
-    height: 100vh;
-    height: -webkit-fill-available;
-    height: 100dvh;
-    height: calc(var(--vh-reel, 1vh) * 100);
+    min-height:100vh;
   }
   .mono{font-family:'IBM Plex Mono', monospace;}
   .phone{
     width:100%;
-    height:100%;
+    min-height:100vh;
     background:var(--bg);
-    overflow:hidden;
     display:flex; flex-direction:column;
     position:relative;
-    /* S'adapte automatiquement à l'encoche/île dynamique de n'importe quel iPhone,
-       ou à la barre de statut de n'importe quel Android, sans avoir à le détecter. */
     padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
   }
-  .screen{display:none; flex-direction:column; flex:1;}
+  .screen{display:none; flex-direction:column;}
   .screen.active{display:flex;}
 
   /* Login screen */
-  #screen-login{justify-content:center; padding:40px 28px;}
+  #screen-login{justify-content:center; padding:40px 28px; min-height:100vh;}
   .login-brand{text-align:center; margin-bottom:36px;}
   .login-logo{width:64px; height:64px; object-fit:contain; margin-bottom:14px;}
   .logo-upload-box{
@@ -97,7 +87,7 @@
   }
 
   /* Home screen */
-  #screen-home{flex:1;}
+  #screen-home{min-height:100vh;}
   .topbar{
     display:flex; align-items:center; gap:12px;
     padding:20px 20px 16px; border-bottom:1px solid var(--line);
@@ -115,14 +105,19 @@
   }
   .btn-logout:hover{background:var(--panel-2); color:var(--text);}
 
-  .home-content{padding:20px; padding-bottom:90px; overflow-y:auto; flex:1;}
+  /* La page défile normalement ; on réserve juste assez de place en bas pour ne pas
+     que le contenu se retrouve caché derrière le menu, qui lui reste fixé à l'écran. */
+  .home-content{padding:20px; padding-bottom:100px;}
 
   .mobile-view{display:none;}
   .mobile-view.active{display:block;}
 
+  /* Fixé à l'écran (pas au document), donc toujours visible même en faisant défiler. */
   .bottom-nav{
+    position:fixed; left:0; right:0; bottom:0;
     display:flex; border-top:1px solid var(--line); background:var(--panel);
-    flex-shrink:0;
+    padding-bottom: env(safe-area-inset-bottom);
+    z-index:1000;
   }
   .bottom-nav-item{
     flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;
@@ -1392,17 +1387,8 @@
   // téléphones, y compris les anciens navigateurs qui ne comprennent pas encore "100dvh" :
   // la hauteur est fixée directement en pixels par JavaScript, sans dépendre d'aucune
   // unité CSS particulière (vh, dvh...) qui pourrait ne pas être reconnue.
-  function ajusterHauteurReelle() {
-    const hauteurPixels = window.innerHeight + 'px';
-    document.documentElement.style.setProperty('--vh-reel', `${window.innerHeight * 0.01}px`);
-    document.body.style.height = hauteurPixels;
-    const phone = document.querySelector('.phone');
-    if (phone) phone.style.height = hauteurPixels;
-  }
-  ajusterHauteurReelle();
-  window.addEventListener('resize', ajusterHauteurReelle);
-  window.addEventListener('orientationchange', ajusterHauteurReelle);
-  setTimeout(ajusterHauteurReelle, 300); // filet de sécurité si la barre du navigateur bouge après le chargement
+  // Note : avec le défilement naturel de la page, plus besoin de calculer/forcer
+  // une hauteur d'écran précise en JavaScript — le navigateur gère ça tout seul.
 </script>
 
 </body>
