@@ -27,13 +27,22 @@
     --info: #6C9CFF;
   }
   *{box-sizing:border-box; margin:0; padding:0;}
-  html, body{height:100%;}
+  html, body{
+    height:100%;
+    width:100%;
+    overflow:hidden; /* empêche le fond de la page de défiler ; seul .home-content défile, en interne */
+  }
   body{
     background:var(--bg);
     color:var(--text);
     font-family:'IBM Plex Sans', -apple-system, sans-serif;
-    height:100vh;
-    height:100dvh;
+    /* Empile plusieurs unités de hauteur : le navigateur retient la dernière qu'il comprend.
+       100dvh (hauteur "dynamique" du vrai écran visible) est la plus fiable sur mobile récent ;
+       les deux autres servent de filet de sécurité sur les navigateurs plus anciens. */
+    height: 100vh;
+    height: -webkit-fill-available;
+    height: 100dvh;
+    height: calc(var(--vh-reel, 1vh) * 100);
   }
   .mono{font-family:'IBM Plex Mono', monospace;}
   .phone{
@@ -43,21 +52,10 @@
     overflow:hidden;
     display:flex; flex-direction:column;
     position:relative;
-  }
-  /* Sur grand écran (ordinateur), on affiche une maquette de téléphone centrée et décorative.
-     Sur téléphone réel (l'essentiel des cas), pas de media query = plein écran natif, simple et fiable. */
-  @media (min-width: 481px){
-    body{
-      background:#0B0E12;
-      display:flex; align-items:center; justify-content:center;
-      padding:24px 0;
-    }
-    .phone{
-      width:390px; max-width:100%;
-      height:760px; max-height:92vh;
-      border-radius:28px;
-      border:1px solid var(--line);
-    }
+    /* S'adapte automatiquement à l'encoche/île dynamique de n'importe quel iPhone,
+       ou à la barre de statut de n'importe quel Android, sans avoir à le détecter. */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
   }
   .screen{display:none; flex-direction:column; flex:1;}
   .screen.active{display:flex;}
@@ -1388,6 +1386,16 @@
       caches.keys().then((noms) => noms.forEach((nom) => caches.delete(nom)));
     }
   }
+
+  // Adapte l'affichage à la hauteur RÉELLE de l'écran de chaque téléphone (barre d'adresse,
+  // clavier, encoche...), plutôt que de deviner un modèle précis. Fonctionne sur tous les
+  // téléphones, y compris les anciens navigateurs qui ne comprennent pas encore "100dvh".
+  function ajusterHauteurReelle() {
+    document.documentElement.style.setProperty('--vh-reel', `${window.innerHeight * 0.01}px`);
+  }
+  ajusterHauteurReelle();
+  window.addEventListener('resize', ajusterHauteurReelle);
+  window.addEventListener('orientationchange', ajusterHauteurReelle);
 </script>
 
 </body>
