@@ -760,6 +760,9 @@
           <div class="panel-head">
             <h2>TICPE — Litrage par tracteur</h2>
             <div style="display:flex; gap:8px; align-items:center;">
+              <select id="ticpe-vehicule-filtre" style="background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:12px; padding:6px 10px; border-radius:7px;">
+                <option value="tous">Tous les véhicules</option>
+              </select>
               <select id="ticpe-annee" style="background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:12px; padding:6px 10px; border-radius:7px;">
                 <option value="2025">2025</option>
                 <option value="2026" selected>2026</option>
@@ -3733,6 +3736,7 @@
         tbodyGazoil.appendChild(tr);
       });
       afficherConsommation();
+      afficherTICPE();
     }
 
     // --- AdBlue : simple suivi, sans calcul de consommation ---
@@ -3890,9 +3894,27 @@
     return totaux;
   }
 
+  function updateTicpeVehiculeFiltre() {
+    const select = document.getElementById('ticpe-vehicule-filtre');
+    const valeurActuelle = select.value;
+    select.innerHTML = '<option value="tous">Tous les véhicules</option>';
+    getTracteursImmats().forEach(immat => {
+      const opt = document.createElement('option');
+      opt.value = immat; opt.textContent = immat;
+      select.appendChild(opt);
+    });
+    if (Array.from(select.options).some(o => o.value === valeurActuelle)) {
+      select.value = valeurActuelle;
+    }
+  }
+  document.getElementById('ticpe-vehicule-filtre').addEventListener('change', afficherTICPE);
+
   function afficherTICPE() {
     const annee = parseInt(document.getElementById('ticpe-annee').value, 10);
-    const tracteurs = getTracteursImmats();
+    const filtreVehicule = document.getElementById('ticpe-vehicule-filtre').value;
+    updateTicpeVehiculeFiltre();
+    const tousLesTracteurs = getTracteursImmats();
+    const tracteurs = filtreVehicule === 'tous' ? tousLesTracteurs : tousLesTracteurs.filter(t => t === filtreVehicule);
     const labels = ticpeVue === 'mensuel' ? MOIS_LABELS : ['T1', 'T2', 'T3', 'T4'];
 
     const thead = document.getElementById('ticpe-thead');
