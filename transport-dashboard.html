@@ -2296,6 +2296,7 @@
   updateSidebarCompteurs();
 
   const NOMS_FRAIS_AFFICHAGE = { cassecroute: 'Casse-croûte', repasnuit: 'Repas nuit', repas: 'Repas', petitdecouche: 'Petit découché', granddecouche: 'Grand découché' };
+  const fraisKeys = ['cassecroute', 'repasnuit', 'repas', 'petitdecouche', 'granddecouche'];
 
   async function updateTotalMois() {
     const periode = getPeriodeSelectionnee();
@@ -2615,7 +2616,10 @@
     ]);
 
     const missionsParJour = {};
-    (missions || []).forEach(m => { missionsParJour[m.date_mission] = m; });
+    (missions || []).forEach(m => {
+      if (!missionsParJour[m.date_mission]) missionsParJour[m.date_mission] = [];
+      missionsParJour[m.date_mission].push(m);
+    });
     const indemnitesParJour = {};
     (indemnites || []).forEach(i => { indemnitesParJour[i.date_jour] = i; });
     const declarationsParJour = {};
@@ -2626,14 +2630,7 @@
     let joursTravailles = 0;
     const NOMS_INDEMNITES = { casse_croute: 'Casse-croûte', repas_nuit: 'Repas nuit', repas: 'Repas', petit_decouche: 'Petit découché', grand_decouche: 'Grand découché' };
 
-    let lignesHtml = '';
-    for (let j = 1; j <= nbJours; j++) {
-      const dateISO = `${annee}-${String(mois + 1).padStart(2, '0')}-${String(j).padStart(2, '0')}`;
-      const dateAffichee = new Date(dateISO + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
-      const mission = missionsParJour[dateISO];
-      const decl = declarationsParJour[dateISO];
-      const indem = indemnitesParJour[dateISO];
-
+    function construireLigneJour(dateAffichee, mission, kmTexte, indemTexte) {
       let missionTexte = '<span style="color:var(--text-dim);">—</span>';
       let statutTexte = '<span style="color:var(--text-dim);">—</span>';
       if (mission) {
@@ -2641,9 +2638,28 @@
         if (mission.realisee) statutTexte = '<span class="chip ok"><span class="chip-dot"></span> Réalisée</span>';
         else if (mission.acceptee) statutTexte = '<span class="chip info"><span class="chip-dot"></span> Acceptée</span>';
         else statutTexte = '<span class="chip warn"><span class="chip-dot"></span> À venir</span>';
-        joursTravailles++;
       }
+      return `
+        <tr>
+          <td class="mono">${dateAffichee}</td>
+          <td>${missionTexte}</td>
+          <td>${statutTexte}</td>
+          <td class="mono">${kmTexte}</td>
+          <td>${indemTexte}</td>
+        </tr>
+      `;
+    }
 
+    let lignesHtml = '';
+    for (let j = 1; j <= nbJours; j++) {
+      const dateISO = `${annee}-${String(mois + 1).padStart(2, '0')}-${String(j).padStart(2, '0')}`;
+      const dateAffichee = new Date(dateISO + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+      const missionsDuJour = missionsParJour[dateISO] || [];
+      const decl = declarationsParJour[dateISO];
+      const indem = indemnitesParJour[dateISO];
+
+      // Kilométrage et indemnités sont au niveau de la JOURNÉE (pas de la mission) — identiques
+      // sur toutes les lignes du jour, même s'il y a plusieurs missions ce jour-là.
       let kmTexte = '<span style="color:var(--text-dim);">—</span>';
       if (decl && decl.km_depart != null && decl.km_arrivee != null) {
         kmTexte = `${(decl.km_arrivee - decl.km_depart).toLocaleString('fr-FR')} km`;
@@ -2656,15 +2672,16 @@
         totalIndemnites += indem.total;
       }
 
-      lignesHtml += `
-        <tr>
-          <td class="mono">${dateAffichee}</td>
-          <td>${missionTexte}</td>
-          <td>${statutTexte}</td>
-          <td class="mono">${kmTexte}</td>
-          <td>${indemTexte}</td>
-        </tr>
-      `;
+      if (missionsDuJour.length === 0) {
+        lignesHtml += construireLigneJour(dateAffichee, null, kmTexte, indemTexte);
+      } else {
+        joursTravailles++;
+        // Une ligne par mission du jour — la date, le kilométrage et les indemnités
+        // (qui sont au niveau de la journée) se répètent sur chaque ligne du même jour.
+        missionsDuJour.forEach(mission => {
+          lignesHtml += construireLigneJour(dateAffichee, mission, kmTexte, indemTexte);
+        });
+      }
     }
     tbody.innerHTML = lignesHtml;
     vide.style.display = 'none';
@@ -2824,7 +2841,7 @@
     closeAddFacturationModal();
   });
 
-  const fraisKeys = ['cassecroute', 'repasnuit', 'repas', 'petitdecouche', 'granddecouche'];
+  // fraisKeys est désormais déclarée plus haut, avant updateTotalMois qui l'utilise
 
   function updateClotureTotal() {
     let total = 0;
