@@ -1389,13 +1389,20 @@
 
   // Adapte l'affichage à la hauteur RÉELLE de l'écran de chaque téléphone (barre d'adresse,
   // clavier, encoche...), plutôt que de deviner un modèle précis. Fonctionne sur tous les
-  // téléphones, y compris les anciens navigateurs qui ne comprennent pas encore "100dvh".
+  // téléphones, y compris les anciens navigateurs qui ne comprennent pas encore "100dvh" :
+  // la hauteur est fixée directement en pixels par JavaScript, sans dépendre d'aucune
+  // unité CSS particulière (vh, dvh...) qui pourrait ne pas être reconnue.
   function ajusterHauteurReelle() {
+    const hauteurPixels = window.innerHeight + 'px';
     document.documentElement.style.setProperty('--vh-reel', `${window.innerHeight * 0.01}px`);
+    document.body.style.height = hauteurPixels;
+    const phone = document.querySelector('.phone');
+    if (phone) phone.style.height = hauteurPixels;
   }
   ajusterHauteurReelle();
   window.addEventListener('resize', ajusterHauteurReelle);
   window.addEventListener('orientationchange', ajusterHauteurReelle);
+  setTimeout(ajusterHauteurReelle, 300); // filet de sécurité si la barre du navigateur bouge après le chargement
 </script>
 
 </body>
