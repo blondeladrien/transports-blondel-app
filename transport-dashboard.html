@@ -1637,7 +1637,21 @@
     }
 
     const logoExistant = localStorage.getItem(CLE_STOCKAGE);
-    if (logoExistant) appliquerLogo(logoExistant);
+    if (logoExistant) {
+      appliquerLogo(logoExistant);
+    } else {
+      // Pas de logo personnalisé enregistré : on affiche le logo bleu "TB" par défaut,
+      // avec repli sur la case vide si le fichier icon-512.png n'est pas trouvé (ex. test en local).
+      document.querySelectorAll('[data-logo-slot]').forEach(boite => {
+        const img = boite.querySelector('img');
+        const placeholder = boite.querySelector('.logo-placeholder');
+        img.onerror = () => {
+          img.style.display = 'none';
+          if (placeholder) placeholder.style.display = 'block';
+        };
+      });
+      appliquerLogo('icon-512.png');
+    }
 
     let boiteActive = null;
     document.querySelectorAll('[data-logo-slot]').forEach(boite => {
