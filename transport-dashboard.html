@@ -573,8 +573,7 @@
               <thead>
                 <tr>
                   <th>Date</th>
-                  <th>Mission</th>
-                  <th>Statut</th>
+                  <th>Missions</th>
                   <th>Km parcourus</th>
                   <th>Indemnités</th>
                   <th></th>
@@ -1468,6 +1467,24 @@
       <div class="modal-foot">
         <button class="btn-ghost" id="confirm-cancel-btn">Annuler</button>
         <button class="btn" id="confirm-ok-btn" style="background:var(--danger); color:#fff;">Supprimer</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-jour-detail-overlay">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <div class="modal-head-name" id="jour-detail-date">—</div>
+          <div class="modal-head-sub" id="jour-detail-chauffeur">—</div>
+        </div>
+        <button class="modal-close" id="modal-jour-detail-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="jour-detail-missions-liste"></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn-ghost" id="modal-jour-detail-close-2">Fermer</button>
       </div>
     </div>
   </div>
@@ -2666,26 +2683,27 @@
     let joursTravailles = 0;
     const NOMS_INDEMNITES = { casse_croute: 'Casse-croûte', repas_nuit: 'Repas nuit', repas: 'Repas', petit_decouche: 'Petit découché', grand_decouche: 'Grand découché' };
 
-    function construireLigneJour(dateAffichee, mission, kmTexte, indemTexte) {
-      let missionTexte = '<span style="color:var(--text-dim);">—</span>';
-      let statutTexte = '<span style="color:var(--text-dim);">—</span>';
-      if (mission) {
-        missionTexte = `${mission.client || 'Client non renseigné'}${mission.adresse ? ' — ' + mission.adresse : ''}`;
-        if (mission.realisee) statutTexte = '<span class="chip ok"><span class="chip-dot"></span> Réalisée</span>';
-        else if (mission.acceptee) statutTexte = '<span class="chip info"><span class="chip-dot"></span> Acceptée</span>';
-        else statutTexte = '<span class="chip warn"><span class="chip-dot"></span> À venir</span>';
+    function libelleStatutMission(mission) {
+      if (mission.realisee) return '<span class="chip ok"><span class="chip-dot"></span> Réalisée</span>';
+      if (mission.acceptee) return '<span class="chip info"><span class="chip-dot"></span> Acceptée</span>';
+      return '<span class="chip warn"><span class="chip-dot"></span> À venir</span>';
+    }
+
+    function construireLigneJour(dateAffichee, dateISO, missionsDuJour, kmTexte, indemTexte, nomChauffeurAffiche) {
+      let missionsTexte = '<span style="color:var(--text-dim);">Aucune</span>';
+      if (missionsDuJour.length === 1) {
+        missionsTexte = missionsDuJour[0].client || 'Client non renseigné';
+      } else if (missionsDuJour.length > 1) {
+        missionsTexte = `${missionsDuJour.length} missions`;
       }
-      const boutonSupprimer = mission
-        ? `<button class="btn-delete-row btn-supprimer-mission-planning" data-mission-id="${mission.id}" title="Supprimer cette mission">🗑</button>`
-        : '';
+      const cliquable = missionsDuJour.length > 0;
       return `
-        <tr>
+        <tr class="${cliquable ? 'ligne-jour-cliquable' : ''}" data-date-iso="${dateISO}" data-chauffeur-affiche="${nomChauffeurAffiche || ''}" style="${cliquable ? 'cursor:pointer;' : ''}">
           <td class="mono">${dateAffichee}</td>
-          <td>${missionTexte}</td>
-          <td>${statutTexte}</td>
+          <td>${missionsTexte}</td>
           <td class="mono">${kmTexte}</td>
           <td>${indemTexte}</td>
-          <td>${boutonSupprimer}</td>
+          <td>${cliquable ? '<span style="color:var(--text-dim);">Voir le détail ›</span>' : ''}</td>
         </tr>
       `;
     }
@@ -2698,8 +2716,7 @@
       const decl = declarationsParJour[dateISO];
       const indem = indemnitesParJour[dateISO];
 
-      // Kilométrage et indemnités sont au niveau de la JOURNÉE (pas de la mission) — identiques
-      // sur toutes les lignes du jour, même s'il y a plusieurs missions ce jour-là.
+      // Kilométrage et indemnités sont au niveau de la JOURNÉE, totalement indépendants des missions.
       let kmTexte = '<span style="color:var(--text-dim);">—</span>';
       if (decl && decl.km_depart != null && decl.km_arrivee != null) {
         kmTexte = `${(decl.km_arrivee - decl.km_depart).toLocaleString('fr-FR')} km`;
@@ -2712,32 +2729,62 @@
         totalIndemnites += indem.total;
       }
 
-      if (missionsDuJour.length === 0) {
-        lignesHtml += construireLigneJour(dateAffichee, null, kmTexte, indemTexte);
-      } else {
-        joursTravailles++;
-        // Une ligne par mission du jour — la date, le kilométrage et les indemnités
-        // (qui sont au niveau de la journée) se répètent sur chaque ligne du même jour.
-        missionsDuJour.forEach(mission => {
-          lignesHtml += construireLigneJour(dateAffichee, mission, kmTexte, indemTexte);
-        });
-      }
+      if (missionsDuJour.length > 0) joursTravailles++;
+
+      const chauffeurAffiche = document.getElementById('planning-chauffeur-select').selectedOptions[0].textContent;
+      lignesHtml += construireLigneJour(dateAffichee, dateISO, missionsDuJour, kmTexte, indemTexte, chauffeurAffiche);
     }
     tbody.innerHTML = lignesHtml;
     vide.style.display = 'none';
     document.getElementById('planning-resume').textContent =
       `${joursTravailles} jour${joursTravailles > 1 ? 's' : ''} avec mission · ${totalIndemnites.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} € d'indemnités sur le mois`;
 
-    tbody.querySelectorAll('.btn-supprimer-mission-planning').forEach(btn => {
+    // Ouvre le détail des missions du jour cliqué
+    tbody.querySelectorAll('.ligne-jour-cliquable').forEach(tr => {
+      tr.addEventListener('click', () => {
+        const dateISO = tr.dataset.dateIso;
+        const missionsDuJour = missionsParJour[dateISO] || [];
+        const dateLongue = new Date(dateISO + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        document.getElementById('jour-detail-date').textContent = dateLongue;
+        document.getElementById('jour-detail-chauffeur').textContent = tr.dataset.chauffeurAffiche;
+        document.getElementById('jour-detail-missions-liste').innerHTML = missionsDuJour.map(mission => `
+          <div class="card" style="border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <strong>${mission.client || 'Client non renseigné'}</strong>
+              ${libelleStatutMission(mission)}
+            </div>
+            ${mission.adresse ? `<div style="font-size:13px; color:var(--text-dim); margin-bottom:4px;">${mission.adresse}</div>` : ''}
+            ${mission.heure_depart ? `<div style="font-size:13px; color:var(--text-dim);">Départ prévu : ${mission.heure_depart}</div>` : ''}
+            ${mission.nombre_tours != null ? `<div style="font-size:13px; margin-top:6px;">Tours réalisés : <strong>${mission.nombre_tours}</strong></div>` : ''}
+            ${mission.remarque ? `<div style="font-size:13px; color:var(--text-dim); margin-top:4px;">Remarque : ${mission.remarque}</div>` : ''}
+            <button class="btn-delete-row btn-supprimer-mission-planning" data-mission-id="${mission.id}" style="margin-top:10px;">🗑 Supprimer cette mission</button>
+          </div>
+        `).join('');
+        document.getElementById('modal-jour-detail-overlay').classList.add('active');
+      });
+    });
+
+    document.querySelectorAll('.btn-supprimer-mission-planning').forEach(btn => {
       btn.addEventListener('click', () => {
         const missionId = btn.dataset.missionId;
         showConfirm('Supprimer définitivement cette mission ? Sa ligne de facturation sera aussi supprimée, sauf si elle a déjà un numéro de facture.', async () => {
           await appelApi(`/missions/${missionId}`, { method: 'DELETE' });
+          document.getElementById('modal-jour-detail-overlay').classList.remove('active');
           chargerPlanningMensuel();
         });
       });
     });
   }
+
+  document.getElementById('modal-jour-detail-close').addEventListener('click', () => {
+    document.getElementById('modal-jour-detail-overlay').classList.remove('active');
+  });
+  document.getElementById('modal-jour-detail-close-2').addEventListener('click', () => {
+    document.getElementById('modal-jour-detail-overlay').classList.remove('active');
+  });
+  document.getElementById('modal-jour-detail-overlay').addEventListener('click', (e) => {
+    if (e.target.id === 'modal-jour-detail-overlay') e.target.classList.remove('active');
+  });
 
   document.getElementById('planning-chauffeur-select').addEventListener('change', chargerPlanningMensuel);
   document.getElementById('planning-mois').addEventListener('change', chargerPlanningMensuel);
