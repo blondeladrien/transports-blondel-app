@@ -1396,6 +1396,12 @@
             <option value="Non attribué">Non attribué</option>
           </select>
         </div>
+        <div class="field" id="assign-tracteur-champ" style="display:none; margin-top:14px;">
+          <label>Tracteur associé</label>
+          <select id="assign-tracteur-select">
+            <option value="Non attribué">Non attribué</option>
+          </select>
+        </div>
       </div>
       <div class="modal-foot">
         <button class="btn-ghost" id="modal-assign-close-2">Annuler</button>
@@ -1901,7 +1907,7 @@
           <td class="mono">${r.immatriculation}</td>
           <td>${r.type || ''}</td>
           <td class="mono">${r.date_controle_technique ? new Date(r.date_controle_technique + 'T00:00:00').toLocaleDateString('fr-FR') : '—'}</td>
-          <td class="tracteur-associe-cell" title="Cliquer pour modifier">${r.tracteur_immat || 'Non attribué'}</td>
+          <td>${r.tracteur_immat || 'Non attribué'}</td>
           <td class="chauffeur-attitre-cell">${chauffeurAttitreRemorque ? chauffeurAttitreRemorque.nom_complet : 'Non attribué'}</td>
           <td class="statut-cell"></td>
           <td>
@@ -3412,11 +3418,33 @@
     const nouveauNom = document.getElementById('assign-chauffeur-select').value;
     const cell = currentAssignRow.querySelector('.chauffeur-attitre-cell');
     if (cell) cell.textContent = nouveauNom;
+
+    // Pour une remorque, on enregistre aussi le tracteur associé, dans la même fenêtre
+    let nouveauTracteurAssocie = null;
+    if (currentAssignEstRemorque) {
+      nouveauTracteurAssocie = document.getElementById('assign-tracteur-select').value;
+      const cellTracteur = currentAssignRow.querySelector('td:nth-child(4)');
+      if (cellTracteur) cellTracteur.textContent = nouveauTracteurAssocie;
+    }
+
     closeAssignModal();
 
     const vehiculeServerId = currentAssignRow.dataset.serverId;
     const champCle = currentAssignEstRemorque ? 'remorque_id' : 'tracteur_id';
     if (!vehiculeServerId || !apiDisponible) return;
+
+    if (currentAssignEstRemorque) {
+      let tracteurId = null;
+      if (nouveauTracteurAssocie !== 'Non attribué') {
+        document.querySelectorAll('#tracteur-tbody tr').forEach(l => {
+          if (l.querySelector('td:nth-child(1)').textContent === nouveauTracteurAssocie) tracteurId = l.dataset.serverId || null;
+        });
+      }
+      await appelApi(`/remorques/${vehiculeServerId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ tracteur_id: tracteurId })
+      });
+    }
 
     // Retrouve, parmi les chauffeurs réels, celui qui avait déjà ce véhicule (à lui retirer)
     // et celui qui doit désormais le recevoir (à lui attribuer).
@@ -3448,41 +3476,6 @@
   });
 
   function handleVehiculeTbodyClick(e) {
-    const tracteurAssocieCell = e.target.closest('.tracteur-associe-cell');
-    if (tracteurAssocieCell && !tracteurAssocieCell.querySelector('select')) {
-      const row = tracteurAssocieCell.closest('tr');
-      const valeurActuelle = tracteurAssocieCell.textContent.trim();
-      const options = ['Non attribué', ...getTracteursImmats()];
-      tracteurAssocieCell.innerHTML = `<select style="background:var(--panel-2); border:1px solid var(--accent); color:var(--text); border-radius:6px; padding:4px 6px; font-family:inherit;">
-        ${options.map(o => `<option value="${o}" ${o === valeurActuelle ? 'selected' : ''}>${o}</option>`).join('')}
-      </select>`;
-      const select = tracteurAssocieCell.querySelector('select');
-      select.focus();
-
-      const sauvegarder = async () => {
-        const choix = select.value;
-        tracteurAssocieCell.innerHTML = choix; // retire le <select>, donc le blur qui suit n'annulera rien
-        if (row.dataset.serverId) {
-          let tracteurId = null;
-          if (choix !== 'Non attribué') {
-            document.querySelectorAll('#tracteur-tbody tr').forEach(l => {
-              if (l.querySelector('td:nth-child(1)').textContent === choix) tracteurId = l.dataset.serverId || null;
-            });
-          }
-          await appelApi(`/remorques/${row.dataset.serverId}`, {
-            method: 'PATCH',
-            body: JSON.stringify({ tracteur_id: tracteurId })
-          });
-        }
-      };
-      select.addEventListener('change', sauvegarder);
-      select.addEventListener('blur', () => {
-        // Si le select est toujours là (aucun changement fait), on annule proprement
-        if (tracteurAssocieCell.querySelector('select')) tracteurAssocieCell.textContent = valeurActuelle;
-      });
-      return;
-    }
-
     const kmCell = e.target.closest('.km-cell');
     if (kmCell && !kmCell.querySelector('input')) {
       const row = kmCell.closest('tr');
@@ -3518,6 +3511,19 @@
       const cell = currentAssignRow.querySelector('.chauffeur-attitre-cell');
       document.getElementById('assign-vehicule-nom').textContent = currentAssignRow.querySelector('td:nth-child(1)').textContent;
       document.getElementById('assign-chauffeur-select').value = cell ? cell.textContent.trim() : 'Non attribué';
+
+      const champTracteur = document.getElementById('assign-tracteur-champ');
+      if (currentAssignEstRemorque) {
+        const selectTracteur = document.getElementById('assign-tracteur-select');
+        selectTracteur.innerHTML = '<option value="Non attribué">Non attribué</option>' +
+          getTracteursImmats().map(immat => `<option value="${immat}">${immat}</option>`).join('');
+        const tracteurActuel = currentAssignRow.querySelector('td:nth-child(4)').textContent.trim();
+        selectTracteur.value = tracteurActuel;
+        champTracteur.style.display = 'block';
+      } else {
+        champTracteur.style.display = 'none';
+      }
+
       assignOverlay.classList.add('active');
       return;
     }
@@ -3824,7 +3830,7 @@
       <td class="mono">${immat}</td>
       <td>${type}</td>
       <td class="mono">${ct}</td>
-      <td class="tracteur-associe-cell" title="Cliquer pour modifier">${tracteur}</td>
+      <td>${tracteur}</td>
       <td class="chauffeur-attitre-cell">Non attribué</td>
       <td class="statut-cell"></td>
       <td>
