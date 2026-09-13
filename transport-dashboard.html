@@ -1901,7 +1901,7 @@
           <td class="mono">${r.immatriculation}</td>
           <td>${r.type || ''}</td>
           <td class="mono">${r.date_controle_technique ? new Date(r.date_controle_technique + 'T00:00:00').toLocaleDateString('fr-FR') : '—'}</td>
-          <td>${r.tracteur_immat || 'Non attribué'}</td>
+          <td class="tracteur-associe-cell" title="Cliquer pour modifier">${r.tracteur_immat || 'Non attribué'}</td>
           <td class="chauffeur-attitre-cell">${chauffeurAttitreRemorque ? chauffeurAttitreRemorque.nom_complet : 'Non attribué'}</td>
           <td class="statut-cell"></td>
           <td>
@@ -3448,6 +3448,41 @@
   });
 
   function handleVehiculeTbodyClick(e) {
+    const tracteurAssocieCell = e.target.closest('.tracteur-associe-cell');
+    if (tracteurAssocieCell && !tracteurAssocieCell.querySelector('select')) {
+      const row = tracteurAssocieCell.closest('tr');
+      const valeurActuelle = tracteurAssocieCell.textContent.trim();
+      const options = ['Non attribué', ...getTracteursImmats()];
+      tracteurAssocieCell.innerHTML = `<select style="background:var(--panel-2); border:1px solid var(--accent); color:var(--text); border-radius:6px; padding:4px 6px; font-family:inherit;">
+        ${options.map(o => `<option value="${o}" ${o === valeurActuelle ? 'selected' : ''}>${o}</option>`).join('')}
+      </select>`;
+      const select = tracteurAssocieCell.querySelector('select');
+      select.focus();
+
+      const sauvegarder = async () => {
+        const choix = select.value;
+        tracteurAssocieCell.innerHTML = choix; // retire le <select>, donc le blur qui suit n'annulera rien
+        if (row.dataset.serverId) {
+          let tracteurId = null;
+          if (choix !== 'Non attribué') {
+            document.querySelectorAll('#tracteur-tbody tr').forEach(l => {
+              if (l.querySelector('td:nth-child(1)').textContent === choix) tracteurId = l.dataset.serverId || null;
+            });
+          }
+          await appelApi(`/remorques/${row.dataset.serverId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ tracteur_id: tracteurId })
+          });
+        }
+      };
+      select.addEventListener('change', sauvegarder);
+      select.addEventListener('blur', () => {
+        // Si le select est toujours là (aucun changement fait), on annule proprement
+        if (tracteurAssocieCell.querySelector('select')) tracteurAssocieCell.textContent = valeurActuelle;
+      });
+      return;
+    }
+
     const kmCell = e.target.closest('.km-cell');
     if (kmCell && !kmCell.querySelector('input')) {
       const row = kmCell.closest('tr');
@@ -3789,7 +3824,7 @@
       <td class="mono">${immat}</td>
       <td>${type}</td>
       <td class="mono">${ct}</td>
-      <td>${tracteur}</td>
+      <td class="tracteur-associe-cell" title="Cliquer pour modifier">${tracteur}</td>
       <td class="chauffeur-attitre-cell">Non attribué</td>
       <td class="statut-cell"></td>
       <td>
