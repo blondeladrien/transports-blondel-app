@@ -2376,6 +2376,7 @@
         const row = document.createElement('tr');
         row.className = 'cloture-row';
         row.dataset.name = i.chauffeur_nom;
+        row.dataset.chauffeurId = i.chauffeur_id;
         row.dataset.avatar = avatar;
         row.dataset.date = i.date_jour;
         row.dataset.total = i.total.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €';
@@ -3017,9 +3018,15 @@
     if (deleteBtn) {
       deleteBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        showConfirm(`Supprimer la clôture de ${row.dataset.name} du ${row.querySelector('td:nth-child(2)').textContent} ?`, () => {
+        const dateAffichee = row.querySelector('td:nth-child(2)').textContent;
+        showConfirm(`Supprimer entièrement la journée de ${row.dataset.name} du ${dateAffichee} ? Le kilométrage et les indemnités de ce jour seront tous les deux effacés.`, async () => {
+          if (row.dataset.chauffeurId && row.dataset.date) {
+            await appelApi(`/cloture-jour/${row.dataset.chauffeurId}/${row.dataset.date}`, { method: 'DELETE' });
+          }
           row.remove();
           updateTotalMois();
+          chargerTableauDeBord();
+          chargerCloturesDuJour();
         });
       });
     }
