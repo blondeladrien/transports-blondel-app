@@ -458,20 +458,20 @@
       <div class="view active" id="view-dashboard">
         <div class="stats" style="grid-template-columns:repeat(5,1fr);">
           <div class="stat">
-            <div class="stat-label">Tournées aujourd'hui</div>
-            <div class="stat-value">0</div>
+            <div class="stat-label">Chauffeurs actifs</div>
+            <div class="stat-value" id="dashboard-nb-chauffeurs">0</div>
           </div>
           <div class="stat">
-            <div class="stat-label">En cours</div>
-            <div class="stat-value ok">0</div>
+            <div class="stat-label">Missions aujourd'hui</div>
+            <div class="stat-value" id="dashboard-missions-jour">0</div>
           </div>
           <div class="stat">
-            <div class="stat-label">En retard</div>
-            <div class="stat-value warn">0</div>
+            <div class="stat-label">Clôturées aujourd'hui</div>
+            <div class="stat-value ok" id="dashboard-missions-validees">0</div>
           </div>
           <div class="stat">
-            <div class="stat-label">Incidents</div>
-            <div class="stat-value danger">0</div>
+            <div class="stat-label">Alertes actives</div>
+            <div class="stat-value danger" id="dashboard-nb-alertes">0</div>
           </div>
           <div class="stat">
             <div class="stat-label">Indemnités (mois)</div>
@@ -481,7 +481,7 @@
 
         <div class="panel" style="margin-bottom:20px; border-color:rgba(239,90,99,0.35);">
           <div class="panel-head">
-            <h2>À traiter en priorité</h2>
+            <h2>Alertes</h2>
             <span style="font-size:12px; color:var(--text-dim);" id="alertes-compteur">Aucune alerte</span>
           </div>
           <div id="alertes-conteneur">
@@ -491,44 +491,11 @@
 
         <div class="panel">
           <div class="panel-head">
-            <h2>Tournées du jour</h2>
-            <button class="btn">+ Nouvelle tournée</button>
+            <h2>Clôtures du jour</h2>
+            <span style="font-size:12px; color:var(--text-dim);" id="cloture-jour-compteur">—</span>
           </div>
-          <div style="overflow-x:auto;">
-            <table>
-            <thead>
-              <tr>
-                <th>Chauffeur</th>
-                <th>Véhicule</th>
-                <th>Trajet</th>
-                <th>Horaire</th>
-                <th>Statut</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><div class="driver"><div class="avatar">NL</div> Nathan Lebreau</div></td>
-                <td class="mono">AB-123-CD</td>
-                <td>Oradour → Limoges</td>
-                <td class="mono">08:00 – 10:30</td>
-                <td><span class="chip ok"><span class="chip-dot"></span> Livré</span></td>
-              </tr>
-              <tr>
-                <td><div class="driver"><div class="avatar">DB</div> Damien Brun</div></td>
-                <td class="mono">EF-456-GH</td>
-                <td>Limoges → Poitiers</td>
-                <td class="mono">09:15 – 12:00</td>
-                <td><span class="chip warn"><span class="chip-dot"></span> Retard 25 min</span></td>
-              </tr>
-              <tr>
-                <td><div class="driver"><div class="avatar">AB</div> Adrien Blondel</div></td>
-                <td class="mono">IJ-789-KL</td>
-                <td>Poitiers → Angoulême</td>
-                <td class="mono">10:00 – 13:30</td>
-                <td><span class="chip info"><span class="chip-dot"></span> En route</span></td>
-              </tr>
-            </tbody>
-          </table>
+          <div id="cloture-jour-conteneur">
+            <div class="placeholder" style="padding:32px 20px;">Aucune clôture envoyée pour l'instant aujourd'hui.</div>
           </div>
         </div>
       </div>
@@ -2001,6 +1968,64 @@
     await chargerPleinsReels();
     afficherTICPE();
     await chargerFacturationReelle();
+    await chargerTableauDeBord();
+    await chargerCloturesDuJour();
+  }
+
+  async function chargerTableauDeBord() {
+    const aujourdhui = new Date().toISOString().slice(0, 10);
+
+    document.getElementById('dashboard-nb-chauffeurs').textContent =
+      document.querySelectorAll('#chauffeur-tbody tr').length;
+
+    const missions = await appelApi('/missions');
+    if (missions) {
+      const missionsAujourdhui = missions.filter(m => m.date_mission === aujourdhui);
+      document.getElementById('dashboard-missions-jour').textContent = missionsAujourdhui.length;
+      document.getElementById('dashboard-missions-validees').textContent =
+        missionsAujourdhui.filter(m => m.realisee).length;
+    }
+  }
+
+  async function chargerCloturesDuJour() {
+    const aujourdhui = new Date().toISOString().slice(0, 10);
+    const moisFormat = aujourdhui.slice(0, 7);
+    const conteneur = document.getElementById('cloture-jour-conteneur');
+
+    const [declarations, indemnites] = await Promise.all([
+      appelApi(`/declarations?mois=${moisFormat}`),
+      appelApi(`/indemnites?mois=${moisFormat}`)
+    ]);
+    if (!declarations) return;
+
+    const declsAujourdhui = declarations.filter(d => d.date_jour === aujourdhui && d.km_arrivee != null);
+    document.getElementById('cloture-jour-compteur').textContent =
+      declsAujourdhui.length === 0 ? 'Aucune' : `${declsAujourdhui.length} chauffeur${declsAujourdhui.length > 1 ? 's' : ''}`;
+
+    if (declsAujourdhui.length === 0) {
+      conteneur.innerHTML = '<div class="placeholder" style="padding:32px 20px;">Aucune clôture envoyée pour l\'instant aujourd\'hui.</div>';
+      return;
+    }
+
+    // Associe chaque déclaration au nom du chauffeur, via les lignes déjà chargées dans Chauffeurs
+    const nomsParId = {};
+    document.querySelectorAll('#chauffeur-tbody tr').forEach(row => {
+      if (row.dataset.serverId) nomsParId[row.dataset.serverId] = row.dataset.name;
+    });
+
+    conteneur.innerHTML = declsAujourdhui.map(d => {
+      const nom = nomsParId[d.chauffeur_id] || 'Chauffeur inconnu';
+      const avatar = nom.split(' ').map(p => p[0]).join('').toUpperCase();
+      const km = (d.km_depart != null && d.km_arrivee != null) ? `${(d.km_arrivee - d.km_depart).toLocaleString('fr-FR')} km` : '—';
+      const indem = (indemnites || []).find(i => String(i.chauffeur_id) === String(d.chauffeur_id) && i.date_jour === aujourdhui);
+      const indemTexte = indem ? `${indem.total.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €` : '—';
+      return `
+        <div class="decl-row" style="padding:12px 18px;">
+          <div class="driver"><div class="avatar">${avatar}</div> ${nom}</div>
+          <span class="decl-value mono">${km} · ${indemTexte}</span>
+        </div>
+      `;
+    }).join('');
   }
 
   async function rafraichirAlertes() {
@@ -2039,6 +2064,7 @@
 
     const conteneur = document.getElementById('alertes-conteneur');
     document.getElementById('alertes-compteur').textContent = alertes.length === 0 ? 'Aucune alerte' : `${alertes.length} élément${alertes.length > 1 ? 's' : ''}`;
+    document.getElementById('dashboard-nb-alertes').textContent = alertes.length;
     if (alertes.length === 0) {
       conteneur.innerHTML = '<div class="placeholder" style="padding:32px 20px;">Aucune alerte pour l\'instant. Les retards, incidents et échéances à venir apparaîtront ici automatiquement.</div>';
       return;
@@ -2202,6 +2228,7 @@
       if (key === 'achats-exceptionnels') updateAchatsProTotalMois();
       if (key === 'ticpe') afficherTICPE();
       if (key === 'facturation') chargerFacturationReelle();
+      if (key === 'dashboard') { chargerTableauDeBord(); chargerCloturesDuJour(); rafraichirAlertes(); }
     });
   });
 
@@ -3747,6 +3774,8 @@
       await updateAchatsTotalMois();
       await updateAchatsProTotalMois();
       await chargerFacturationReelle();
+      await chargerTableauDeBord();
+      await chargerCloturesDuJour();
     } else {
       afficherErreurApi('Backend non connecté — impossible de rafraîchir les données réelles.');
     }
