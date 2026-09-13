@@ -451,9 +451,8 @@
 
       <div class="mobile-view" id="mobile-view-cloture">
         <div class="card">
-          <div class="card-title">Mission actuelle</div>
-          <div class="mission-row"><span class="mission-label">Statut</span><span class="mission-value" id="mission-valide-statut">Non validée</span></div>
-          <button class="btn-secondary" id="btn-valider-mission">✅ Valider cette mission</button>
+          <div class="card-title">Missions à clôturer</div>
+          <div id="liste-missions-a-cloturer"></div>
         </div>
 
         <div class="card">
@@ -793,9 +792,6 @@
     missionValidee = false;
     nombreToursRealises = null;
     remarqueMission = '';
-    btnValiderMission.classList.remove('validated');
-    btnValiderMission.textContent = '✅ Valider la mission réalisée avec succès';
-    document.getElementById('mission-valide-statut').textContent = 'Non validée';
 
     // Statuts des documents administratifs (même seuils que le contrôle technique côté modérateur)
     Object.entries(compte.documents || {}).forEach(([cle, dateISO]) => {
@@ -874,6 +870,7 @@
           const mission = mesMissions.find(m => String(m.id) === String(missionId));
           if (mission) mission.acceptee = 1;
           afficherListeMissions();
+          afficherListeMissionsACloturer();
           showBanner('Mission acceptée ✓');
         } else {
           btn.disabled = false;
@@ -1027,6 +1024,7 @@
     chargerMaConsommation();
     chargerMesIndemnitesMensuelles();
     afficherListeMissions();
+    afficherListeMissionsACloturer();
     chargerKmDepartAujourdhui();
     return true;
   }
@@ -1312,22 +1310,44 @@
   let nombreToursRealises = null;
   let kmArrivee = '';
   let remarqueMission = '';
-  const btnValiderMission = document.getElementById('btn-valider-mission');
   const toursOverlay = document.getElementById('modal-tours-overlay');
-
   let missionEnCoursDeValidation = null;
 
-  btnValiderMission.addEventListener('click', () => {
-    // La mission à valider est la première acceptée mais pas encore réalisée
-    missionEnCoursDeValidation = mesMissions.find(m => m.acceptee && !m.realisee) || null;
-    if (!missionEnCoursDeValidation) {
-      showBanner('Aucune mission acceptée à valider — acceptez-en une depuis l\'onglet Accueil.');
+  // Affiche toutes les missions ACCEPTÉES mais pas encore réalisées, chacune avec son propre
+  // bouton de clôture — comme pour l'acceptation sur l'Accueil.
+  function afficherListeMissionsACloturer() {
+    const conteneur = document.getElementById('liste-missions-a-cloturer');
+    const aCloturer = mesMissions.filter(m => m.acceptee && !m.realisee).sort((a, b) => a.date_mission.localeCompare(b.date_mission));
+
+    if (aCloturer.length === 0) {
+      conteneur.innerHTML = '<div class="file-name">Aucune mission acceptée à clôturer pour l\'instant.</div>';
       return;
     }
-    document.getElementById('nombre-tours').value = nombreToursRealises !== null ? nombreToursRealises : '';
-    document.getElementById('remarque-mission').value = remarqueMission;
-    toursOverlay.classList.add('active');
-  });
+
+    conteneur.innerHTML = aCloturer.map(m => {
+      const dateAffichee = new Date(m.date_mission + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+      const heure = m.heure_depart ? ` · ${m.heure_depart}` : '';
+      return `
+        <div class="mission-row" style="align-items:flex-start; padding:12px 0; border-bottom:1px solid var(--line);">
+          <div style="flex:1;">
+            <div style="font-weight:600;">${m.client || 'Client non renseigné'}</div>
+            <div style="font-size:12px; color:var(--text-dim); margin-top:2px;">${dateAffichee}${heure}${m.adresse ? ' — ' + m.adresse : ''}</div>
+          </div>
+          <button class="btn-secondary btn-cloturer-mission-ligne" data-mission-id="${m.id}" style="width:auto; padding:8px 14px; margin:0;">Clôturer</button>
+        </div>
+      `;
+    }).join('');
+
+    conteneur.querySelectorAll('.btn-cloturer-mission-ligne').forEach(btn => {
+      btn.addEventListener('click', () => {
+        missionEnCoursDeValidation = mesMissions.find(m => String(m.id) === String(btn.dataset.missionId)) || null;
+        if (!missionEnCoursDeValidation) return;
+        document.getElementById('nombre-tours').value = '';
+        document.getElementById('remarque-mission').value = '';
+        toursOverlay.classList.add('active');
+      });
+    });
+  }
 
   document.getElementById('modal-tours-annuler').addEventListener('click', () => {
     toursOverlay.classList.remove('active');
@@ -1355,20 +1375,15 @@
       } catch (e) { missionEnvoiReussi = false; }
     }
 
-    btnValiderMission.classList.add('validated');
-    btnValiderMission.textContent = `✓ Mission validée (${toursTexte})`;
-    document.getElementById('mission-valide-statut').innerHTML =
-      `Validée — ${toursTexte} réalisé${nombreToursRealises > 1 ? 's' : ''}` +
-      (remarqueMission ? `<br>Remarque : ${remarqueMission}` : '') +
-      (!missionEnvoiReussi ? '<br><strong style="color:var(--danger);">⚠️ Échec de l\'envoi au serveur — réessayez avec du réseau.</strong>' : '');
     toursOverlay.classList.remove('active');
 
     if (!missionEnvoiReussi) {
       showBanner("⚠️ Échec de l'envoi au serveur — vérifiez votre connexion et réessayez.");
     } else {
-      // Marque la mission comme réalisée dans la liste locale, et rafraîchit l'accueil
+      // Marque la mission comme réalisée dans la liste locale, et rafraîchit les deux écrans
       missionEnCoursDeValidation.realisee = 1;
       afficherListeMissions();
+      afficherListeMissionsACloturer();
       showBanner('Mission validée ✓');
     }
   });
