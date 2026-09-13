@@ -1869,7 +1869,7 @@
         tr.innerHTML = `
           <td class="mono">${t.immatriculation}</td>
           <td>${t.modele || 'Modèle non renseigné'}</td>
-          <td class="mono">${(t.kilometrage || 0).toLocaleString('fr-FR')} km</td>
+          <td class="mono km-cell" title="Cliquer pour modifier">${(t.kilometrage || 0).toLocaleString('fr-FR')} km</td>
           <td class="mono">${t.date_controle_technique ? new Date(t.date_controle_technique + 'T00:00:00').toLocaleDateString('fr-FR') : '—'}</td>
           <td class="chauffeur-attitre-cell">${chauffeurAttitre ? chauffeurAttitre.nom_complet : 'Non attribué'}</td>
           <td class="statut-cell"></td>
@@ -3441,6 +3441,33 @@
   });
 
   function handleVehiculeTbodyClick(e) {
+    const kmCell = e.target.closest('.km-cell');
+    if (kmCell && !kmCell.querySelector('input')) {
+      const row = kmCell.closest('tr');
+      const valeurActuelle = (kmCell.textContent.match(/[\d\s]+/) || [''])[0].replace(/\s/g, '');
+      kmCell.innerHTML = `<input type="text" value="${valeurActuelle}" style="width:90px; background:var(--panel-2); border:1px solid var(--accent); color:var(--text); border-radius:6px; padding:4px 6px; font-family:inherit;">`;
+      const input = kmCell.querySelector('input');
+      input.focus();
+      input.select();
+
+      const sauvegarder = async () => {
+        const nouveauKm = parseInt(input.value.replace(/[^\d]/g, ''), 10) || 0;
+        kmCell.innerHTML = `${nouveauKm.toLocaleString('fr-FR')} km`;
+        if (row.dataset.serverId) {
+          await appelApi(`/tracteurs/${row.dataset.serverId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ kilometrage: nouveauKm })
+          });
+        }
+      };
+      input.addEventListener('blur', sauvegarder);
+      input.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') input.blur();
+        if (ev.key === 'Escape') { kmCell.innerHTML = `${valeurActuelle || 0} km`; }
+      });
+      return;
+    }
+
     const assignBtn = e.target.closest('.btn-assign-chauffeur');
     const assignBtnRemorque = e.target.closest('.btn-assign-chauffeur-remorque');
     if (assignBtn || assignBtnRemorque) {
@@ -3680,7 +3707,7 @@
     tr.innerHTML = `
       <td class="mono">${immat}</td>
       <td>${modele}</td>
-      <td class="mono">${km}</td>
+      <td class="mono km-cell" title="Cliquer pour modifier">${km}</td>
       <td class="mono">${ct}</td>
       <td class="chauffeur-attitre-cell">${chauffeur}</td>
       <td class="statut-cell"></td>
