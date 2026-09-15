@@ -1999,6 +1999,7 @@
     await chargerFacturationReelle();
     await chargerTableauDeBord();
     await chargerCloturesDuJour();
+    await chargerHistoriqueReel();
   }
 
   async function chargerTableauDeBord() {
@@ -2056,6 +2057,51 @@
       `;
     }).join('');
   }
+
+  let historiqueComplet = [];
+  let filtreHistoriqueActuel = 'tous';
+
+  async function chargerHistoriqueReel() {
+    const lignes = await appelApi('/historique');
+    if (!lignes) return;
+    historiqueComplet = lignes;
+    afficherHistoriqueFiltre();
+  }
+
+  function afficherHistoriqueFiltre() {
+    const tbody = document.getElementById('historique-tbody');
+    const NOMS_TYPE = { mission: 'Mission', frais: 'Clôture (frais de route)', controle: 'Contrôle technique' };
+    const filtrees = filtreHistoriqueActuel === 'tous'
+      ? historiqueComplet
+      : historiqueComplet.filter(l => l.type === filtreHistoriqueActuel);
+
+    if (filtrees.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="placeholder" style="padding:24px;">Aucun élément pour ce filtre.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = filtrees.map(l => {
+      const dateAffichee = new Date(l.date + 'T00:00:00').toLocaleDateString('fr-FR');
+      return `
+        <tr>
+          <td class="mono">${dateAffichee}</td>
+          <td>${NOMS_TYPE[l.type] || l.type}</td>
+          <td>${l.chauffeur}</td>
+          <td>${l.detail || '—'}</td>
+          <td>${l.info || '—'}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  document.querySelectorAll('#view-historique .filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#view-historique .filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      filtreHistoriqueActuel = btn.dataset.filter;
+      afficherHistoriqueFiltre();
+    });
+  });
 
   async function rafraichirAlertes() {
     const alertes = [];
@@ -2258,6 +2304,7 @@
       if (key === 'ticpe') afficherTICPE();
       if (key === 'facturation') chargerFacturationReelle();
       if (key === 'dashboard') { chargerTableauDeBord(); chargerCloturesDuJour(); rafraichirAlertes(); }
+      if (key === 'historique') chargerHistoriqueReel();
     });
   });
 
@@ -3904,6 +3951,7 @@
       await chargerFacturationReelle();
       await chargerTableauDeBord();
       await chargerCloturesDuJour();
+      await chargerHistoriqueReel();
     } else {
       afficherErreurApi('Backend non connecté — impossible de rafraîchir les données réelles.');
     }
