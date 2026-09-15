@@ -3060,12 +3060,26 @@
   document.getElementById('modal-add-facturation-close-2').addEventListener('click', closeAddFacturationModal);
   addFacturationOverlay.addEventListener('click', (e) => { if (e.target === addFacturationOverlay) closeAddFacturationModal(); });
 
-  document.getElementById('btn-create-facturation').addEventListener('click', () => {
+  document.getElementById('btn-create-facturation').addEventListener('click', async () => {
     const chauffeur = document.getElementById('facturation-chauffeur').value;
     const dateRaw = document.getElementById('facturation-date').value;
     const client = document.getElementById('facturation-client').value.trim();
     if (!dateRaw || !client || !chauffeur) return;
-    creerLigneFacturation(chauffeur, dateRaw, client);
+
+    // Persistance réelle en base — jusqu'ici cette ligne n'existait qu'en local, jamais envoyée
+    // au serveur, d'où sa disparition à chaque reconnexion.
+    let serverId = null;
+    let chauffeurServerId = null;
+    document.querySelectorAll('#chauffeur-tbody tr').forEach(l => { if (l.dataset.name === chauffeur) chauffeurServerId = l.dataset.serverId || null; });
+    if (chauffeurServerId) {
+      const reponse = await appelApi('/facturation', {
+        method: 'POST',
+        body: JSON.stringify({ chauffeur_id: parseInt(chauffeurServerId, 10), date_mission: dateRaw, client: client })
+      });
+      if (reponse) serverId = reponse.id;
+    }
+
+    creerLigneFacturation(chauffeur, dateRaw, client, serverId);
 
     document.getElementById('facturation-date').value = '';
     document.getElementById('facturation-client').value = '';
