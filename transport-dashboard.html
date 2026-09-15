@@ -1002,6 +1002,7 @@
                 <th>Client</th>
                 <th>N° de facture</th>
                 <th>Date de facturation</th>
+                <th>Note</th>
                 <th></th>
               </tr>
             </thead>
@@ -1566,6 +1567,10 @@
         <div class="field">
           <label>Date de facturation</label>
           <input type="date" id="facturer-date">
+        </div>
+        <div class="field">
+          <label>Note (ex. prix, remarque...)</label>
+          <input type="text" id="facturer-note" placeholder="ex. 850 € HT, à relancer...">
         </div>
       </div>
       <div class="modal-foot">
@@ -2865,6 +2870,7 @@
       document.getElementById('facturer-ligne-sub').textContent = `${row.dataset.client} — ${row.querySelector('td:nth-child(2)').textContent}`;
       document.getElementById('facturer-numero').value = row.dataset.numero || '';
       document.getElementById('facturer-date').value = row.dataset.dateFacturation || '';
+      document.getElementById('facturer-note').value = row.dataset.note || '';
       facturerLigneOverlay.classList.add('active');
     });
     const delBtn = row.querySelector('.btn-delete-row');
@@ -2888,19 +2894,22 @@
     if (!currentFacturationRow) return;
     const numero = document.getElementById('facturer-numero').value.trim();
     const dateFacturationRaw = document.getElementById('facturer-date').value;
+    const note = document.getElementById('facturer-note').value.trim();
     currentFacturationRow.dataset.numero = numero;
     currentFacturationRow.dataset.dateFacturation = dateFacturationRaw;
+    currentFacturationRow.dataset.note = note;
 
     if (currentFacturationRow.dataset.serverId) {
       await appelApi(`/facturation/${currentFacturationRow.dataset.serverId}`, {
         method: 'PATCH',
-        body: JSON.stringify({ numero_facture: numero, date_facturation: dateFacturationRaw })
+        body: JSON.stringify({ numero_facture: numero, date_facturation: dateFacturationRaw, note: note })
       });
     }
 
     const dateFacturationAffichee = dateFacturationRaw ? new Date(dateFacturationRaw + 'T00:00:00').toLocaleDateString('fr-FR') : '—';
     currentFacturationRow.querySelector('.cell-numero').textContent = numero || '—';
     currentFacturationRow.querySelector('.cell-date-facturation').textContent = dateFacturationAffichee;
+    currentFacturationRow.querySelector('.cell-note').textContent = note || '—';
 
     const complet = numero.length > 0 && dateFacturationRaw.length > 0;
     currentFacturationRow.classList.toggle('facturee', complet);
@@ -2925,6 +2934,7 @@
       tr.dataset.chauffeurNom = l.chauffeur_nom;
       tr.dataset.numero = l.numero_facture || '';
       tr.dataset.dateFacturation = l.date_facturation || '';
+      tr.dataset.note = l.note || '';
       tr.dataset.serverId = l.id;
       tr.innerHTML = `
         <td><div class="driver"><div class="avatar">${avatar}</div> ${l.chauffeur_nom}</div></td>
@@ -2932,6 +2942,7 @@
         <td>${l.client}</td>
         <td class="cell-numero mono">${l.numero_facture || '—'}</td>
         <td class="cell-date-facturation mono">${l.date_facturation ? new Date(l.date_facturation + 'T00:00:00').toLocaleDateString('fr-FR') : '—'}</td>
+        <td class="cell-note" title="Cliquer pour modifier">${l.note || '—'}</td>
         <td><button class="btn-delete-row" title="Supprimer">🗑</button></td>
       `;
       tbody.appendChild(tr);
@@ -2971,6 +2982,7 @@
     tr.dataset.chauffeurNom = chauffeur;
     tr.dataset.numero = '';
     tr.dataset.dateFacturation = '';
+    tr.dataset.note = '';
     if (serverId) tr.dataset.serverId = serverId;
     tr.innerHTML = `
       <td><div class="driver"><div class="avatar">${avatar}</div> ${chauffeur}</div></td>
@@ -2978,6 +2990,7 @@
       <td>${client}</td>
       <td class="cell-numero mono">—</td>
       <td class="cell-date-facturation mono">—</td>
+      <td class="cell-note" title="Cliquer pour modifier">—</td>
       <td><button class="btn-delete-row" title="Supprimer">🗑</button></td>
     `;
     document.getElementById('facturation-tbody').prepend(tr);
