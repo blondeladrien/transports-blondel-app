@@ -1848,12 +1848,13 @@
     document.getElementById('tracteur-chauffeur').innerHTML = '<option value="">Non attribué</option>';
     document.getElementById('remorque-tracteur').innerHTML = '<option value="Non attribué">Non attribué</option>';
 
-    const [chauffeurs, tracteurs, remorques, comptes, documentsChauffeurs] = await Promise.all([
+    const [chauffeurs, tracteurs, remorques, comptes, documentsChauffeurs, missionsToutes] = await Promise.all([
       appelApi('/chauffeurs'),
       appelApi('/tracteurs'),
       appelApi('/remorques'),
       appelApi('/utilisateurs'),
-      appelApi('/documents/chauffeurs')
+      appelApi('/documents/chauffeurs'),
+      appelApi('/missions')
     ]);
 
     if (chauffeurs && chauffeurs.length) {
@@ -1870,10 +1871,26 @@
         tr.dataset.statut = 'Chauffeur existant';
         tr.dataset.mission = 'en-attente';
         tr.dataset.serverId = c.id;
+
+        // Relie cette ligne à sa mission NON ENCORE RÉALISÉE la plus récente, pour que
+        // "🗑 Supprimer la mission" fonctionne aussi pour les missions déjà existantes
+        // (pas seulement celles créées dans la session en cours).
+        let missionCellule = c.tracteur_immat ? 'Tracteur ' + c.tracteur_immat : 'Aucune tournée assignée';
+        if (missionsToutes) {
+          const missionLiee = missionsToutes
+            .filter(m => m.chauffeur_id === c.id && !m.realisee)
+            .sort((a, b) => b.date_mission.localeCompare(a.date_mission))[0];
+          if (missionLiee) {
+            tr.dataset.missionServerId = missionLiee.id;
+            const dateAffichee = new Date(missionLiee.date_mission + 'T00:00:00').toLocaleDateString('fr-FR');
+            missionCellule = `${missionLiee.client || 'Client non renseigné'} — ${dateAffichee}`;
+          }
+        }
+
         tr.innerHTML = `
           <td><div class="driver"><div class="avatar">${avatar}</div> ${c.nom_complet}</div></td>
           <td>Disponible</td>
-          <td>${c.tracteur_immat ? 'Tracteur ' + c.tracteur_immat : 'Aucune tournée assignée'}</td>
+          <td>${missionCellule}</td>
           <td class="mono">0h00</td>
           <td><span class="chip ok"><span class="chip-dot"></span> Actif</span></td>
           <td><button class="btn-delete-row" title="Supprimer">🗑</button></td>
