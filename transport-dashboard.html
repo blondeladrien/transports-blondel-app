@@ -1988,7 +1988,15 @@
         updateDocCell(cell);
       });
     });
-    (remorques || []).forEach(r => creerLigneDocVehiculeSiAbsente(r.immatriculation));
+    (remorques || []).forEach(r => {
+      const row = creerLigneDocVehiculeSiAbsente(r.immatriculation);
+      const correspondance = { assurance: 'date_assurance', controletechnique: 'date_controle_technique', extincteur: 'date_extincteur', chronotachygraphe: 'date_chronotachygraphe', tachylimiteur: 'date_tachylimiteur' };
+      DOC_VCLES_INIT.forEach(cle => {
+        const cell = row.querySelector('.doc-cell-' + cle);
+        cell.dataset.date = r[correspondance[cle]] || '';
+        updateDocCell(cell);
+      });
+    });
 
     // Rafraîchit toutes les synthèses et filtres dépendants de ces listes
     updateSidebarCompteurs();
@@ -3406,20 +3414,24 @@
       updateDocCell(cell);
     });
 
-    // Persistance réelle en base (uniquement pour les tracteurs — les remorques n'ont pas ces 5 champs)
+    // Persistance réelle en base — désormais possible pour les tracteurs ET les remorques
+    const donneesDocs = {
+      date_assurance: document.getElementById('doc-vdate-assurance').value || null,
+      date_controle_technique: document.getElementById('doc-vdate-controletechnique').value || null,
+      date_extincteur: document.getElementById('doc-vdate-extincteur').value || null,
+      date_chronotachygraphe: document.getElementById('doc-vdate-chronotachygraphe').value || null,
+      date_tachylimiteur: document.getElementById('doc-vdate-tachylimiteur').value || null
+    };
     let tracteurServerId = null;
     document.querySelectorAll('#tracteur-tbody tr').forEach(l => { if (l.querySelector('td:nth-child(1)').textContent === immat) tracteurServerId = l.dataset.serverId || null; });
     if (tracteurServerId) {
-      appelApi(`/documents/tracteurs/${tracteurServerId}`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          date_assurance: document.getElementById('doc-vdate-assurance').value || null,
-          date_controle_technique: document.getElementById('doc-vdate-controletechnique').value || null,
-          date_extincteur: document.getElementById('doc-vdate-extincteur').value || null,
-          date_chronotachygraphe: document.getElementById('doc-vdate-chronotachygraphe').value || null,
-          date_tachylimiteur: document.getElementById('doc-vdate-tachylimiteur').value || null
-        })
-      });
+      appelApi(`/documents/tracteurs/${tracteurServerId}`, { method: 'PUT', body: JSON.stringify(donneesDocs) });
+    } else {
+      let remorqueServerId = null;
+      document.querySelectorAll('#remorque-tbody tr').forEach(l => { if (l.querySelector('td:nth-child(1)').textContent === immat) remorqueServerId = l.dataset.serverId || null; });
+      if (remorqueServerId) {
+        appelApi(`/documents/remorques/${remorqueServerId}`, { method: 'PUT', body: JSON.stringify(donneesDocs) });
+      }
     }
 
     closeDocVehiculeModal();
