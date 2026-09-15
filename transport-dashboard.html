@@ -1679,6 +1679,25 @@
   </div>
 
 <script>
+  // Les sélecteurs de mois/année (Planning mensuel, Chauffeur, Facturation) étaient figés sur
+  // "Septembre 2026" en dur dans le HTML — jamais recalculés. Dès que le calendrier avançait d'un
+  // mois, tout ce qui était créé après devenait invisible (filtré, pas supprimé) sans qu'on le
+  // remarque. On les aligne systématiquement sur le mois/année réel, au tout début du script,
+  // avant que quoi que ce soit d'autre ne les lise.
+  (function alignerSelecteursMoisSurAujourdhui() {
+    const aujourdhui = new Date();
+    const moisActuel = String(aujourdhui.getMonth());
+    const anneeActuelle = String(aujourdhui.getFullYear());
+    ['planning-mois', 'periode-mois', 'facturation-mois'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = moisActuel;
+    });
+    ['planning-annee', 'periode-annee', 'facturation-annee', 'ticpe-annee'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = anneeActuelle;
+    });
+  })();
+
   // Gestion du logo personnalisé : mémorisé dans le navigateur (localStorage), partagé entre tous les emplacements
   (function initLogoPersonnalise() {
     const CLE_STOCKAGE = 'logoPersonnaliseBlondel';
