@@ -900,18 +900,23 @@
   document.getElementById('btn-enregistrer-km-depart').addEventListener('click', async () => {
     const valeur = document.getElementById('km-depart-input').value.trim();
     if (!valeur) return;
+    const dateDuJour = new Date().toISOString().slice(0, 10);
     let envoiReussi = true;
     if (authToken) {
       try {
         const reponse = await fetch(`${API_URL}/declarations/km-depart`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
-          body: JSON.stringify({ km_depart: parseInt(valeur.replace(/[^\d]/g, ''), 10) })
+          body: JSON.stringify({ km_depart: parseInt(valeur.replace(/[^\d]/g, ''), 10), date: dateDuJour })
         });
         envoiReussi = reponse.ok;
       } catch (e) { envoiReussi = false; }
     }
     if (envoiReussi) {
+      // Mémorise la date de DÉMARRAGE, y compris si l'app est fermée avant la clôture (service
+      // de nuit) : la clôture et les indemnités seront explicitement rattachées à cette date,
+      // jamais à "aujourd'hui" qui pourrait déjà être le lendemain après minuit.
+      localStorage.setItem('dateDebutJourneeChauffeur', dateDuJour);
       document.getElementById('km-depart-affiche').textContent = valeur + ' km';
       document.getElementById('km-depart-input').value = '';
       showBanner('Kilométrage départ enregistré ✓');
@@ -1396,14 +1401,17 @@
     const kmSoir = document.getElementById('km-arrivee-jour').value.trim();
 
     if (authToken) {
-      // Kilométrage du soir : indépendant de toute mission, une seule fois par jour
+      // Kilométrage du soir : indépendant de toute mission, une seule fois par jour.
+      // Rattaché explicitement à la date de DÉMARRAGE mémorisée (pas "aujourd'hui"), pour que
+      // les services de nuit traversant minuit restent comptés sur le bon jour.
+      const dateDemarrage = localStorage.getItem('dateDebutJourneeChauffeur');
       if (kmSoir) {
         const arriveeNum = parseFloat(kmSoir.replace(/[^\d.]/g, ''));
         try {
           const reponseKm = await fetch(`${API_URL}/declarations/km-arrivee`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
-            body: JSON.stringify({ km_arrivee: arriveeNum })
+            body: JSON.stringify(dateDemarrage ? { km_arrivee: arriveeNum, date: dateDemarrage } : { km_arrivee: arriveeNum })
           });
           envoiKmReussi = reponseKm.ok;
           if (envoiKmReussi && compteActuel) {
@@ -1417,6 +1425,7 @@
       const cles = ['casse_croute', 'repas_nuit', 'repas', 'petit_decouche', 'grand_decouche'];
       const indemnites = {};
       cases.forEach((c, i) => { indemnites[cles[i]] = c.checked; });
+      if (dateDemarrage) indemnites.date = dateDemarrage;
       try {
         const reponse = await fetch(`${API_URL}/indemnites`, {
           method: 'POST',
@@ -1426,6 +1435,9 @@
         envoiIndemnitesReussi = reponse.ok;
       } catch (e) { /* envoiIndemnitesReussi reste false */ }
     }
+
+    // La journée est close : la prochaine sera une nouvelle date de démarrage à mémoriser.
+    localStorage.removeItem('dateDebutJourneeChauffeur');
 
     const envoiReussi = envoiIndemnitesReussi && envoiKmReussi;
     if (envoiReussi) {
