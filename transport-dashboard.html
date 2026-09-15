@@ -2809,6 +2809,7 @@
             </div>
             ${mission.adresse ? `<div style="font-size:13px; color:var(--text-dim); margin-bottom:4px;">${mission.adresse}</div>` : ''}
             ${mission.heure_depart ? `<div style="font-size:13px; color:var(--text-dim);">Départ prévu : ${mission.heure_depart}</div>` : ''}
+            ${mission.chef_de_chantier ? `<div style="font-size:13px; color:var(--text-dim); margin-top:4px;">Chef de chantier : ${mission.chef_de_chantier}</div>` : ''}
             ${mission.nombre_tours != null ? `<div style="font-size:13px; margin-top:6px;">Tours réalisés : <strong>${mission.nombre_tours}</strong></div>` : ''}
             ${mission.remarque ? `<div style="font-size:13px; color:var(--text-dim); margin-top:4px;">Remarque : ${mission.remarque}</div>` : ''}
             <button class="btn-delete-row btn-supprimer-mission-planning" data-mission-id="${mission.id}" style="margin-top:10px;">🗑 Supprimer cette mission</button>
