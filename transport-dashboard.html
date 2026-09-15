@@ -1078,6 +1078,7 @@
       </div>
       <div class="modal-foot">
         <button class="btn-ghost" id="modal-close-2">Fermer</button>
+        <button class="btn-delete-row" id="btn-supprimer-mission-chauffeur" style="display:none;" title="Supprimer uniquement la mission (le chauffeur reste)">🗑 Supprimer la mission</button>
         <button class="btn" id="btn-confirmer-mission-realisee">✓ Confirmer la mission réalisée</button>
       </div>
     </div>
@@ -2348,6 +2349,24 @@
   document.getElementById('modal-close-2').addEventListener('click', closeModal);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
 
+  document.getElementById('btn-supprimer-mission-chauffeur').addEventListener('click', () => {
+    if (!currentDriverRow || !currentDriverRow.dataset.missionServerId) return;
+    const missionId = currentDriverRow.dataset.missionServerId;
+    const nomChauffeur = currentDriverRow.dataset.name;
+    showConfirm(`Supprimer uniquement cette mission de ${nomChauffeur} ? Le chauffeur reste dans la liste, seule la mission disparaît.`, async () => {
+      await appelApi(`/missions/${missionId}`, { method: 'DELETE' });
+      delete currentDriverRow.dataset.missionServerId;
+      currentDriverRow.dataset.statut = 'Aucune mission assignée';
+      currentDriverRow.dataset.client = '';
+      currentDriverRow.dataset.dateMission = '';
+      const celluleMission = currentDriverRow.querySelector('td:nth-child(2)');
+      if (celluleMission) celluleMission.textContent = 'Aucune mission assignée';
+      closeModal();
+      chargerPlanningMensuel();
+      rafraichirAlertes();
+    });
+  });
+
   document.getElementById('btn-confirmer-mission-realisee').addEventListener('click', async () => {
     if (!currentDriverRow) return;
     currentDriverRow.dataset.mission = 'reussie';
@@ -3169,6 +3188,8 @@
       document.getElementById('modal-total').textContent = row.dataset.total;
       document.getElementById('modal-statut').textContent = row.dataset.statut;
       const btnConfirmer = document.getElementById('btn-confirmer-mission-realisee');
+      const btnSupprimerMission = document.getElementById('btn-supprimer-mission-chauffeur');
+      btnSupprimerMission.style.display = row.dataset.missionServerId ? 'inline-block' : 'none';
       if (row.dataset.mission === 'reussie') {
         document.getElementById('modal-mission').innerHTML = '<span class="chip ok"><span class="chip-dot"></span> Oui</span>';
         btnConfirmer.style.display = 'none';
