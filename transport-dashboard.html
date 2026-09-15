@@ -2815,16 +2815,18 @@
           </div>
         `).join('');
         document.getElementById('modal-jour-detail-overlay').classList.add('active');
-      });
-    });
 
-    document.querySelectorAll('.btn-supprimer-mission-planning').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const missionId = btn.dataset.missionId;
-        showConfirm('Supprimer définitivement cette mission ? Sa ligne de facturation sera aussi supprimée, sauf si elle a déjà un numéro de facture.', async () => {
-          await appelApi(`/missions/${missionId}`, { method: 'DELETE' });
-          document.getElementById('modal-jour-detail-overlay').classList.remove('active');
-          chargerPlanningMensuel();
+        // Attaché ICI, à chaque ouverture, car ces boutons n'existent qu'une fois le détail affiché —
+        // les attacher plus tôt (au chargement de la page) ne trouvait aucun bouton à relier.
+        document.querySelectorAll('.btn-supprimer-mission-planning').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const missionId = btn.dataset.missionId;
+            showConfirm('Supprimer définitivement cette mission ? Sa ligne de facturation sera aussi supprimée, sauf si elle a déjà un numéro de facture.', async () => {
+              await appelApi(`/missions/${missionId}`, { method: 'DELETE' });
+              document.getElementById('modal-jour-detail-overlay').classList.remove('active');
+              chargerPlanningMensuel();
+            });
+          });
         });
       });
     });
