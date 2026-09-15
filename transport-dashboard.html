@@ -535,6 +535,7 @@
           <div class="panel-head">
             <h2>Sélection</h2>
             <div style="display:flex; gap:8px; align-items:center;">
+              <button class="btn" id="btn-mission-planning">+ Ajouter une mission</button>
               <select id="planning-chauffeur-select" style="background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:12px; padding:6px 10px; border-radius:7px;">
               </select>
               <select id="planning-mois" style="background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:12px; padding:6px 10px; border-radius:7px;">
@@ -1100,7 +1101,7 @@
         <div class="field-row">
           <div class="field">
             <label>Date de la mission</label>
-            <input type="date" id="mission-date" value="2026-09-06">
+            <input type="date" id="mission-date">
           </div>
           <div class="field">
             <label>Heure de départ</label>
@@ -2370,7 +2371,19 @@
 
   const missionOverlay = document.getElementById('modal-mission-overlay');
   const closeMissionModal = () => missionOverlay.classList.remove('active');
+  let missionModalUsageInterne = false;
   document.getElementById('btn-mission-jour').addEventListener('click', () => {
+    missionModalUsageInterne = false;
+    document.querySelector('#modal-mission-overlay .modal-head-name').textContent = 'Nouvelle mission du jour';
+    document.querySelector('#modal-mission-overlay .modal-head-sub').textContent = 'Affecter une mission à un chauffeur';
+    document.getElementById('mission-date').value = new Date().toISOString().slice(0, 10);
+    missionOverlay.classList.add('active');
+  });
+  document.getElementById('btn-mission-planning').addEventListener('click', () => {
+    missionModalUsageInterne = true;
+    document.querySelector('#modal-mission-overlay .modal-head-name').textContent = 'Mission pour votre suivi';
+    document.querySelector('#modal-mission-overlay .modal-head-sub').textContent = 'Usage interne uniquement — ne sera jamais envoyée ni visible sur le téléphone du chauffeur';
+    document.getElementById('mission-date').value = new Date().toISOString().slice(0, 10);
     missionOverlay.classList.add('active');
   });
   document.getElementById('modal-mission-close').addEventListener('click', closeMissionModal);
@@ -3212,7 +3225,8 @@
           heure_depart: heure,
           client: client,
           adresse: adresse,
-          chef_de_chantier: chef
+          chef_de_chantier: chef,
+          interne_seulement: missionModalUsageInterne
         })
       });
     }
@@ -3247,6 +3261,7 @@
     docInput.value = '';
     document.getElementById('mission-document-name').textContent = 'Aucun fichier sélectionné';
     rafraichirAlertes();
+    if (resultatMissionApi) chargerPlanningMensuel();
     closeMissionModal();
   });
 
