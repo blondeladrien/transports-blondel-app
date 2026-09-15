@@ -1404,7 +1404,11 @@
       // Kilométrage du soir : indépendant de toute mission, une seule fois par jour.
       // Rattaché explicitement à la date de DÉMARRAGE mémorisée (pas "aujourd'hui"), pour que
       // les services de nuit traversant minuit restent comptés sur le bon jour.
-      const dateDemarrage = localStorage.getItem('dateDebutJourneeChauffeur');
+      // Si le chauffeur a oublié de renseigner le kilométrage de départ ce matin, il n'y a aucune
+      // date de démarrage mémorisée. Dans ce cas précis, on rattache la clôture au jour même de
+      // son envoi (le mieux qu'on puisse faire sans information de départ) — jamais laissé au
+      // serveur qui pourrait retomber sur une ancienne journée déjà close par erreur.
+      const dateDemarrage = localStorage.getItem('dateDebutJourneeChauffeur') || new Date().toISOString().slice(0, 10);
       if (kmSoir) {
         const arriveeNum = parseFloat(kmSoir.replace(/[^\d.]/g, ''));
         try {
