@@ -2822,6 +2822,12 @@
       .filter(d => d.km_arrivee != null)
       .sort((a, b) => a.date_jour.localeCompare(b.date_jour));
     const kmParcouruParJour = {};
+    // Exception : la toute première clôture connue (aucun jour J-1 auquel se comparer) se calcule
+    // normalement (arrivée − départ du même jour), plutôt que de ne rien afficher du tout.
+    if (clotures.length > 0 && clotures[0].km_depart != null) {
+      const deltaPremierJour = clotures[0].km_arrivee - clotures[0].km_depart;
+      if (deltaPremierJour >= 0) kmParcouruParJour[clotures[0].date_jour] = deltaPremierJour;
+    }
     for (let i = 1; i < clotures.length; i++) {
       const delta = clotures[i].km_arrivee - clotures[i - 1].km_arrivee;
       if (delta >= 0) kmParcouruParJour[clotures[i].date_jour] = delta;
