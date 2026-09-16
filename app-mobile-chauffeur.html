@@ -892,7 +892,7 @@
       const donnees = await reponse.json();
       if (donnees.declaration && donnees.declaration.km_depart != null) {
         document.getElementById('km-depart-affiche').textContent = donnees.declaration.km_depart.toLocaleString('fr-FR') + ' km';
-        document.getElementById('km-depart-input').value = '';
+        document.getElementById('km-depart-input').value = donnees.declaration.km_depart;
       } else if (donnees.km_depart_suggere) {
         document.getElementById('km-depart-affiche').textContent = 'Non renseigné aujourd\'hui';
         document.getElementById('km-depart-input').value = donnees.km_depart_suggere;
