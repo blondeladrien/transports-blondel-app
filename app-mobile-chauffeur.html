@@ -1422,6 +1422,21 @@
             compteActuel.dernierKmArrivee = kmSoir;
             compteActuel.dernierTracteurUtilise = document.getElementById('home-tracteur').textContent;
           }
+
+          // Vérification : on relit ce que le serveur a VRAIMENT enregistré, plutôt que de faire
+          // confiance au simple code 200. Ça détecte tout enregistrement silencieusement raté
+          // (par exemple si aucune journée ne correspondait à la date envoyée).
+          if (envoiKmReussi) {
+            try {
+              const dateVerif = dateDemarrage;
+              const reponseVerif = await fetchAvecDelai(`${API_URL}/declarations/aujourdhui?date=${dateVerif}`, { headers: { 'Authorization': `Bearer ${authToken}` } }, 10000);
+              const donneesVerif = await reponseVerif.json();
+              const kmReellementEnregistre = donneesVerif.declaration ? donneesVerif.declaration.km_arrivee : null;
+              if (kmReellementEnregistre === null || Math.round(kmReellementEnregistre) !== Math.round(arriveeNum)) {
+                envoiKmReussi = false;
+              }
+            } catch (e) { /* si la vérification échoue techniquement, on ne bloque pas la clôture pour autant */ }
+          }
         } catch (e) { envoiKmReussi = false; }
       }
 
@@ -1440,10 +1455,12 @@
       } catch (e) { /* envoiIndemnitesReussi reste false */ }
     }
 
-    // La journée est close : la prochaine sera une nouvelle date de démarrage à mémoriser.
-    localStorage.removeItem('dateDebutJourneeChauffeur');
-
     const envoiReussi = envoiIndemnitesReussi && envoiKmReussi;
+
+    // La journée n'est considérée close, et la date oubliée, que si tout a VRAIMENT été
+    // enregistré (vérifié ci-dessus) — sinon on la garde pour permettre un nouvel essai correct.
+    if (envoiReussi) localStorage.removeItem('dateDebutJourneeChauffeur');
+
     if (envoiReussi) {
       showBanner(missionValidee
         ? `Clôture envoyée au modérateur ✓ (mission validée — ${nombreToursRealises} tour${nombreToursRealises > 1 ? 's' : ''})`
