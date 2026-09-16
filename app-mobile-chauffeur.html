@@ -780,6 +780,9 @@
 
   function afficherEspacePersonnel(compte) {
     compteActuel = compte;
+    document.querySelector('.topbar-date').textContent =
+      new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+        .replace(/^./, c => c.toUpperCase());
     document.getElementById('home-avatar').textContent = compte.avatar;
     document.getElementById('home-name').textContent = compte.nom;
     document.getElementById('home-tracteur').textContent = compte.tracteur;
@@ -1466,6 +1469,10 @@
         ? `Clôture envoyée au modérateur ✓ (mission validée — ${nombreToursRealises} tour${nombreToursRealises > 1 ? 's' : ''})`
         : 'Clôture envoyée au modérateur ✓');
       if (envoiIndemnitesReussi) chargerMesIndemnitesMensuelles();
+      // Permet de réouvrir une nouvelle journée immédiatement : le kilométrage de départ suggéré
+      // reprend directement celui qu'on vient de clôturer, sans attendre une reconnexion.
+      document.getElementById('km-depart-input').value = '';
+      chargerKmDepartAujourdhui();
     } else if (authToken) {
       showBanner('⚠️ Échec de l\'envoi — vérifiez votre connexion et réessayez.');
     } else {
