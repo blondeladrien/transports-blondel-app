@@ -646,7 +646,9 @@
         </div>
         <div class="field">
           <label>Client</label>
-          <input type="text" id="nouvelle-mission-client" placeholder="Nom du client">
+          <select id="nouvelle-mission-client">
+            <option value="">Sélectionnez un client</option>
+          </select>
         </div>
         <div class="field">
           <label>Chef de chantier</label>
@@ -1031,6 +1033,7 @@
     }
     chargerMaConsommation();
     chargerMesIndemnitesMensuelles();
+    chargerClientsPourMission();
     afficherListeMissions();
     afficherListeMissionsACloturer();
     chargerKmDepartAujourdhui();
@@ -1250,9 +1253,24 @@
     cb.addEventListener('change', updateHomeTotal);
   });
 
+  // Charge la même liste de clients que celle gérée par le modérateur sur le web —
+  // le chauffeur choisit parmi les mêmes clients, jamais un texte libre différent.
+  async function chargerClientsPourMission() {
+    if (!authToken) return;
+    try {
+      const reponse = await fetchAvecDelai(`${API_URL}/clients`, { headers: { 'Authorization': `Bearer ${authToken}` } }, 10000);
+      if (!reponse.ok) return;
+      const clients = await reponse.json();
+      const select = document.getElementById('nouvelle-mission-client');
+      select.innerHTML = '<option value="">Sélectionnez un client</option>' +
+        clients.map(c => `<option value="${c.nom}">${c.nom}</option>`).join('');
+    } catch (e) { /* le menu reste avec juste l'option par défaut */ }
+  }
+
   // --- Créer une mission (avec sa propre date, comme sur le web modérateur) ---
   const creerMissionOverlay = document.getElementById('modal-creer-mission-overlay');
   document.getElementById('btn-ouvrir-creer-mission').addEventListener('click', () => {
+    chargerClientsPourMission();
     document.getElementById('nouvelle-mission-date').value = new Date().toISOString().slice(0, 10);
     document.getElementById('nouvelle-mission-trajet').value = '';
     document.getElementById('nouvelle-mission-heure').value = '';
