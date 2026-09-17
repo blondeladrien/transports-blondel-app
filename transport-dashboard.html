@@ -575,6 +575,8 @@
                 <tr>
                   <th>Date</th>
                   <th>Missions</th>
+                  <th>Missions réalisées</th>
+                  <th>Tours</th>
                   <th>Km parcourus</th>
                   <th>Indemnités</th>
                   <th></th>
@@ -2843,6 +2845,7 @@
     const nbJours = new Date(annee, mois + 1, 0).getDate();
     let totalIndemnites = 0;
     let joursTravailles = 0;
+    let totalToursMois = 0;
     const NOMS_INDEMNITES = { casse_croute: 'Casse-croûte', repas_nuit: 'Repas nuit', repas: 'Repas', petit_decouche: 'Petit découché', grand_decouche: 'Grand découché' };
 
     function libelleStatutMission(mission) {
@@ -2858,11 +2861,21 @@
       } else if (missionsDuJour.length > 1) {
         missionsTexte = `${missionsDuJour.length} missions`;
       }
+      const missionsRealisees = missionsDuJour.filter(m => m.realisee);
+      const totalTours = missionsRealisees.reduce((s, m) => s + (m.nombre_tours || 0), 0);
+      const missionsRealiseesTexte = missionsDuJour.length > 0
+        ? `${missionsRealisees.length} / ${missionsDuJour.length}`
+        : '<span style="color:var(--text-dim);">—</span>';
+      const toursTexte = missionsRealisees.length > 0
+        ? `<span class="mono">${totalTours}</span>`
+        : '<span style="color:var(--text-dim);">—</span>';
       const cliquable = missionsDuJour.length > 0;
       return `
         <tr class="${cliquable ? 'ligne-jour-cliquable' : ''}" data-date-iso="${dateISO}" data-chauffeur-affiche="${nomChauffeurAffiche || ''}" style="${cliquable ? 'cursor:pointer;' : ''}">
           <td class="mono">${dateAffichee}</td>
           <td>${missionsTexte}</td>
+          <td>${missionsRealiseesTexte}</td>
+          <td>${toursTexte}</td>
           <td class="mono">${kmTexte}</td>
           <td>${indemTexte}</td>
           <td>${cliquable ? '<span style="color:var(--text-dim);">Voir le détail ›</span>' : ''}</td>
@@ -2893,6 +2906,7 @@
       }
 
       if (missionsDuJour.length > 0) joursTravailles++;
+      totalToursMois += missionsDuJour.filter(m => m.realisee).reduce((s, m) => s + (m.nombre_tours || 0), 0);
 
       const chauffeurAffiche = document.getElementById('planning-chauffeur-select').selectedOptions[0].textContent;
       lignesHtml += construireLigneJour(dateAffichee, dateISO, missionsDuJour, kmTexte, indemTexte, chauffeurAffiche);
@@ -2900,7 +2914,7 @@
     tbody.innerHTML = lignesHtml;
     vide.style.display = 'none';
     document.getElementById('planning-resume').textContent =
-      `${joursTravailles} jour${joursTravailles > 1 ? 's' : ''} avec mission · ${totalIndemnites.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} € d'indemnités sur le mois`;
+      `${joursTravailles} jour${joursTravailles > 1 ? 's' : ''} avec mission · ${totalToursMois} tour${totalToursMois > 1 ? 's' : ''} réalisé${totalToursMois > 1 ? 's' : ''} · ${totalIndemnites.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} € d'indemnités sur le mois`;
 
     // Ouvre le détail des missions du jour cliqué
     tbody.querySelectorAll('.ligne-jour-cliquable').forEach(tr => {
