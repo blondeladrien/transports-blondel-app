@@ -2801,7 +2801,7 @@
       appelApi(`/missions?chauffeur_id=${chauffeurId}&mois=${moisFormat}`),
       appelApi(`/indemnites?chauffeur_id=${chauffeurId}&mois=${moisFormat}`),
       appelApi(`/declarations?chauffeur_id=${chauffeurId}&mois=${moisFormat}`),
-      appelApi(`/declarations?chauffeur_id=${chauffeurId}`)
+      appelApi('/declarations')
     ]);
 
     const missionsParJour = {};
@@ -2814,24 +2814,31 @@
     const declarationsParJour = {};
     (declarationsMois || []).forEach(d => { declarationsParJour[d.date_jour] = d; });
 
-    // Kilométrage en CYCLE FERMÉ : le kilométrage parcouru un jour donné se calcule comme
-    // (clôture de ce jour) moins (clôture précédente la plus récente) — jamais comme
-    // (arrivée moins départ) du même jour. Ça fonctionne même si le chauffeur a oublié de
-    // renseigner son kilométrage de départ : seules les CLÔTURES successives comptent.
-    const clotures = (declarationsToutes || [])
-      .filter(d => d.km_arrivee != null)
-      .sort((a, b) => a.date_jour.localeCompare(b.date_jour));
+    // Kilométrage en CYCLE FERMÉ, rattaché au VÉHICULE et non au chauffeur : le kilométrage
+    // parcouru un jour donné se calcule comme (clôture de ce jour) moins (clôture précédente
+    // la plus récente SUR CE MÊME VÉHICULE, peu importe quel chauffeur l'a faite) — jamais comme
+    // (arrivée moins départ) du même jour, ni comme une chaîne propre à chaque chauffeur. Ça
+    // fonctionne même si le kilométrage de départ a été oublié, et reste juste si un véhicule
+    // change de chauffeur en cours de route.
+    const cloturesParVehicule = {};
+    (declarationsToutes || []).filter(d => d.km_arrivee != null && d.tracteur_id).forEach(d => {
+      if (!cloturesParVehicule[d.tracteur_id]) cloturesParVehicule[d.tracteur_id] = [];
+      cloturesParVehicule[d.tracteur_id].push(d);
+    });
     const kmParcouruParJour = {};
-    // Exception : la toute première clôture connue (aucun jour J-1 auquel se comparer) se calcule
-    // normalement (arrivée − départ du même jour), plutôt que de ne rien afficher du tout.
-    if (clotures.length > 0 && clotures[0].km_depart != null) {
-      const deltaPremierJour = clotures[0].km_arrivee - clotures[0].km_depart;
-      if (deltaPremierJour >= 0) kmParcouruParJour[clotures[0].date_jour] = deltaPremierJour;
-    }
-    for (let i = 1; i < clotures.length; i++) {
-      const delta = clotures[i].km_arrivee - clotures[i - 1].km_arrivee;
-      if (delta >= 0) kmParcouruParJour[clotures[i].date_jour] = delta;
-    }
+    Object.values(cloturesParVehicule).forEach(liste => {
+      liste.sort((a, b) => a.date_jour.localeCompare(b.date_jour));
+      // Exception : la toute première clôture connue pour ce véhicule (aucun jour précédent
+      // auquel se comparer) se calcule normalement (arrivée − départ du même jour).
+      if (liste[0].km_depart != null) {
+        const deltaPremierJour = liste[0].km_arrivee - liste[0].km_depart;
+        if (deltaPremierJour >= 0) kmParcouruParJour[liste[0].date_jour] = deltaPremierJour;
+      }
+      for (let i = 1; i < liste.length; i++) {
+        const delta = liste[i].km_arrivee - liste[i - 1].km_arrivee;
+        if (delta >= 0) kmParcouruParJour[liste[i].date_jour] = delta;
+      }
+    });
 
     const nbJours = new Date(annee, mois + 1, 0).getDate();
     let totalIndemnites = 0;
