@@ -3039,7 +3039,13 @@
         document.getElementById('jour-detail-missions-liste').innerHTML = missionsDuJour.map(mission => `
           <div class="card" style="border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:10px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-              <strong>${mission.client || 'Client non renseigné'}</strong>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <select class="select-client-mission" data-mission-id="${mission.id}" style="background:var(--panel-2); border:1px solid var(--line); color:var(--text); border-radius:6px; padding:4px 8px; font-family:inherit;">
+                  <option value="">Client non renseigné</option>
+                  ${clientsConnus.map(c => `<option value="${c.nom}" ${c.nom === mission.client ? 'selected' : ''}>${c.nom}</option>`).join('')}
+                </select>
+                <button class="btn-ghost btn-corriger-client" data-mission-id="${mission.id}" style="padding:4px 10px; font-size:12px;">Corriger</button>
+              </div>
               ${libelleStatutMission(mission)}
             </div>
             ${mission.adresse ? `<div style="font-size:13px; color:var(--text-dim); margin-bottom:4px;">${mission.adresse}</div>` : ''}
@@ -3074,6 +3080,26 @@
         // Correction manuelle du nombre de tours — en cas d'erreur de saisie du chauffeur à la
         // clôture. Modifie directement la mission en base, donc se répercute partout où ce
         // nombre est affiché (Planning mensuel, bilan client...), puisque tout relit la même donnée.
+        // Correction manuelle du client — en cas d'erreur de saisie. Modifie directement la
+        // mission en base, donc se répercute partout où ce client est affiché ou comptabilisé
+        // (Planning mensuel, Facturation, bilan client...), puisque tout relit la même donnée.
+        document.querySelectorAll('.btn-corriger-client').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const missionId = btn.dataset.missionId;
+            const select = document.querySelector(`.select-client-mission[data-mission-id="${missionId}"]`);
+            const nouveauClient = select.value;
+            btn.disabled = true;
+            btn.textContent = '...';
+            await appelApi(`/missions/${missionId}`, {
+              method: 'PATCH',
+              body: JSON.stringify({ client: nouveauClient })
+            });
+            btn.textContent = '✓ Enregistré';
+            chargerPlanningMensuel(); // met à jour la table en arrière-plan
+            setTimeout(() => { btn.disabled = false; btn.textContent = 'Corriger'; }, 1500);
+          });
+        });
+
         document.querySelectorAll('.btn-enregistrer-tours').forEach(btn => {
           btn.addEventListener('click', async () => {
             const missionId = btn.dataset.missionId;
@@ -3213,11 +3239,13 @@
   // CLIENTS
   // ============================================================
 
+  let clientsConnus = [];
   async function chargerClientsReels() {
     const clients = await appelApi('/clients');
     const tbody = document.getElementById('clients-tbody');
     const select = document.getElementById('client-bilan-select');
     if (!clients) return;
+    clientsConnus = clients;
 
     document.getElementById('clients-vide').style.display = clients.length === 0 ? 'block' : 'none';
 
