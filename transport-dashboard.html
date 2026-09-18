@@ -2885,12 +2885,17 @@
       return;
     }
 
-    const [missions, indemnites, declarationsMois, declarationsToutes] = await Promise.all([
+    const [missions, indemnites, declarationsMois, declarationsToutes, chauffeursTous] = await Promise.all([
       appelApi(`/missions?chauffeur_id=${chauffeurId}&mois=${moisFormat}`),
       appelApi(`/indemnites?chauffeur_id=${chauffeurId}&mois=${moisFormat}`),
       appelApi(`/declarations?chauffeur_id=${chauffeurId}&mois=${moisFormat}`),
-      appelApi('/declarations')
+      appelApi('/declarations'),
+      appelApi('/chauffeurs')
     ]);
+
+    // Véhicule ATTITRÉ de chaque chauffeur, pour détecter un changement de véhicule déclaré
+    const vehiculeAttitreParChauffeur = {};
+    (chauffeursTous || []).forEach(c => { vehiculeAttitreParChauffeur[c.id] = c.tracteur_attitre_id; });
 
     const missionsParJour = {};
     (missions || []).forEach(m => {
@@ -2915,11 +2920,11 @@
       cloturesParVehicule[d.tracteur_id].push(d);
     });
     const kmParcouruParChauffeurEtJour = {};
+    const cle = (d) => `${d.chauffeur_id}_${d.date_jour}`;
+
+    // D'abord, la chaîne par véhicule (cas normal : véhicule attitré, pas de changement déclaré)
     Object.values(cloturesParVehicule).forEach(liste => {
       liste.sort((a, b) => `${a.date_jour} ${a.heure_fin_service || '23:59:59'}`.localeCompare(`${b.date_jour} ${b.heure_fin_service || '23:59:59'}`));
-      // Exception : la toute première clôture connue pour ce véhicule (aucune clôture précédente
-      // à laquelle se comparer) se calcule normalement (arrivée − départ du même jour).
-      const cle = (d) => `${d.chauffeur_id}_${d.date_jour}`;
       if (liste[0].km_depart != null) {
         const deltaPremierJour = liste[0].km_arrivee - liste[0].km_depart;
         if (deltaPremierJour >= 0) kmParcouruParChauffeurEtJour[cle(liste[0])] = deltaPremierJour;
@@ -2927,6 +2932,24 @@
       for (let i = 1; i < liste.length; i++) {
         const delta = liste[i].km_arrivee - liste[i - 1].km_arrivee;
         if (delta >= 0) kmParcouruParChauffeurEtJour[cle(liste[i])] = delta;
+      }
+    });
+
+    // Ensuite, on écrase avec le calcul du jour même (arrivée − départ) pour toute journée où
+    // le véhicule utilisé DIFFÈRE du véhicule attitré du chauffeur — un changement de véhicule
+    // a été déclaré, donc on ne compte que ce qui a été fait durant CETTE session précise,
+    // sans le mélanger à l'historique du véhicule emprunté.
+    (declarationsToutes || []).filter(d => d.km_arrivee != null && d.tracteur_id).forEach(d => {
+      const attitre = vehiculeAttitreParChauffeur[d.chauffeur_id];
+      const changementDeclare = attitre != null && String(d.tracteur_id) !== String(attitre);
+      if (changementDeclare) {
+        if (d.km_depart != null) {
+          const delta = d.km_arrivee - d.km_depart;
+          if (delta >= 0) kmParcouruParChauffeurEtJour[cle(d)] = delta;
+          else delete kmParcouruParChauffeurEtJour[cle(d)];
+        } else {
+          delete kmParcouruParChauffeurEtJour[cle(d)];
+        }
       }
     });
 
