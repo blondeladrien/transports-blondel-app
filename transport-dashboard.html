@@ -3045,7 +3045,13 @@
             ${mission.adresse ? `<div style="font-size:13px; color:var(--text-dim); margin-bottom:4px;">${mission.adresse}</div>` : ''}
             ${mission.heure_depart ? `<div style="font-size:13px; color:var(--text-dim);">Départ prévu : ${mission.heure_depart}</div>` : ''}
             ${mission.chef_de_chantier ? `<div style="font-size:13px; color:var(--text-dim); margin-top:4px;">Chef de chantier : ${mission.chef_de_chantier}</div>` : ''}
-            ${mission.nombre_tours != null ? `<div style="font-size:13px; margin-top:6px;">Tours réalisés : <strong>${mission.nombre_tours}</strong></div>` : ''}
+            ${mission.realisee ? `
+              <div style="display:flex; align-items:center; gap:8px; margin-top:8px;">
+                <label style="font-size:13px;">Tours réalisés :</label>
+                <input type="number" min="0" class="input-tours-mission" data-mission-id="${mission.id}" value="${mission.nombre_tours != null ? mission.nombre_tours : ''}" style="width:70px; background:var(--panel-2); border:1px solid var(--line); color:var(--text); border-radius:6px; padding:4px 8px; font-family:inherit;">
+                <button class="btn-ghost btn-enregistrer-tours" data-mission-id="${mission.id}" style="padding:4px 10px; font-size:12px;">Corriger</button>
+              </div>
+            ` : ''}
             ${mission.remarque ? `<div style="font-size:13px; color:var(--text-dim); margin-top:4px;">Remarque : ${mission.remarque}</div>` : ''}
             <button class="btn-delete-row btn-supprimer-mission-planning" data-mission-id="${mission.id}" style="margin-top:10px;">🗑 Supprimer cette mission</button>
           </div>
@@ -3062,6 +3068,27 @@
               document.getElementById('modal-jour-detail-overlay').classList.remove('active');
               chargerPlanningMensuel();
             });
+          });
+        });
+
+        // Correction manuelle du nombre de tours — en cas d'erreur de saisie du chauffeur à la
+        // clôture. Modifie directement la mission en base, donc se répercute partout où ce
+        // nombre est affiché (Planning mensuel, bilan client...), puisque tout relit la même donnée.
+        document.querySelectorAll('.btn-enregistrer-tours').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const missionId = btn.dataset.missionId;
+            const input = document.querySelector(`.input-tours-mission[data-mission-id="${missionId}"]`);
+            const nouvelleValeur = parseInt(input.value, 10);
+            if (isNaN(nouvelleValeur) || nouvelleValeur < 0) return;
+            btn.disabled = true;
+            btn.textContent = '...';
+            await appelApi(`/missions/${missionId}`, {
+              method: 'PATCH',
+              body: JSON.stringify({ nombre_tours: nouvelleValeur })
+            });
+            btn.textContent = '✓ Enregistré';
+            chargerPlanningMensuel(); // met à jour la table en arrière-plan (Tours, totaux...)
+            setTimeout(() => { btn.disabled = false; btn.textContent = 'Corriger'; }, 1500);
           });
         });
       });
