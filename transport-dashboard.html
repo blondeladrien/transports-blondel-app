@@ -4436,9 +4436,9 @@
           <td class="mono">${dateAffichee}</td>
           <td class="mono">${p.tracteur_immat}</td>
           <td>${p.chauffeur_nom || '—'}</td>
-          <td class="mono">${p.kilometrage ? p.kilometrage.toLocaleString('fr-FR') + ' km' : '—'}</td>
-          <td class="mono">${p.litres ? p.litres + ' L' : '—'}</td>
-          <td class="mono">${tr.dataset.prix}</td>
+          <td class="mono plein-cell-editable" data-champ="kilometrage" title="Cliquer pour modifier">${p.kilometrage ? p.kilometrage.toLocaleString('fr-FR') + ' km' : '—'}</td>
+          <td class="mono plein-cell-editable" data-champ="litres" title="Cliquer pour modifier">${p.litres ? p.litres + ' L' : '—'}</td>
+          <td class="mono plein-cell-editable" data-champ="prix_total" title="Cliquer pour modifier">${tr.dataset.prix}</td>
           <td class="mono">${consoTexte}</td>
           <td><button class="btn-delete-row" title="Supprimer">🗑</button></td>
         `;
@@ -4655,6 +4655,34 @@
   afficherTICPE();
 
   document.getElementById('conso-tbody').addEventListener('click', (e) => {
+    const cellEditable = e.target.closest('.plein-cell-editable');
+    if (cellEditable && !cellEditable.querySelector('input')) {
+      const row = cellEditable.closest('tr');
+      const champ = cellEditable.dataset.champ;
+      const valeurBrute = (cellEditable.textContent.match(/[\d.,]+/) || [''])[0].replace(',', '.');
+      cellEditable.innerHTML = `<input type="text" value="${valeurBrute}" style="width:90px; background:var(--panel-2); border:1px solid var(--accent); color:var(--text); border-radius:6px; padding:4px 6px; font-family:inherit;">`;
+      const input = cellEditable.querySelector('input');
+      input.focus();
+      input.select();
+
+      const suffixe = { kilometrage: ' km', litres: ' L', prix_total: ' €' }[champ];
+      const sauvegarder = async () => {
+        const nombre = parseFloat(input.value.replace(',', '.')) || 0;
+        const affichage = champ === 'kilometrage' ? Math.round(nombre).toLocaleString('fr-FR') : nombre.toLocaleString('fr-FR', champ === 'prix_total' ? { minimumFractionDigits: 2 } : {});
+        cellEditable.innerHTML = affichage + suffixe;
+        if (row.dataset.serverId) {
+          await appelApi(`/pleins/${row.dataset.serverId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ [champ]: champ === 'kilometrage' ? Math.round(nombre) : nombre })
+          });
+        }
+        chargerPleinsReels(); // recalcule la conso et TICPE avec la valeur corrigée
+      };
+      input.addEventListener('blur', sauvegarder);
+      input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') input.blur(); });
+      return;
+    }
+
     const delBtn = e.target.closest('.btn-delete-row');
     if (delBtn) {
       const row = delBtn.closest('tr');
