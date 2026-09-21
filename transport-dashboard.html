@@ -4659,7 +4659,7 @@
     if (cellEditable && !cellEditable.querySelector('input')) {
       const row = cellEditable.closest('tr');
       const champ = cellEditable.dataset.champ;
-      const valeurBrute = (cellEditable.textContent.match(/[\d.,]+/) || [''])[0].replace(',', '.');
+      const valeurBrute = cellEditable.textContent.replace(/[^\d.,]/g, '').replace(',', '.');
       const valeurOriginale = cellEditable.innerHTML;
       cellEditable.innerHTML = `
         <span style="display:inline-flex; gap:4px; align-items:center;">
