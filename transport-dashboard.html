@@ -4660,13 +4660,23 @@
       const row = cellEditable.closest('tr');
       const champ = cellEditable.dataset.champ;
       const valeurBrute = (cellEditable.textContent.match(/[\d.,]+/) || [''])[0].replace(',', '.');
-      cellEditable.innerHTML = `<input type="text" value="${valeurBrute}" style="width:90px; background:var(--panel-2); border:1px solid var(--accent); color:var(--text); border-radius:6px; padding:4px 6px; font-family:inherit;">`;
+      const valeurOriginale = cellEditable.innerHTML;
+      cellEditable.innerHTML = `
+        <span style="display:inline-flex; gap:4px; align-items:center;">
+          <input type="text" inputmode="decimal" value="${valeurBrute}" style="width:75px; background:var(--panel-2); border:1px solid var(--accent); color:var(--text); border-radius:6px; padding:4px 6px; font-family:inherit;">
+          <button class="btn-valider-plein" style="background:var(--ok); color:#fff; border:none; border-radius:5px; width:24px; height:24px; cursor:pointer; font-size:13px; line-height:1;">✓</button>
+          <button class="btn-annuler-plein" style="background:var(--panel-2); color:var(--text-dim); border:1px solid var(--line); border-radius:5px; width:24px; height:24px; cursor:pointer; font-size:13px; line-height:1;">✕</button>
+        </span>
+      `;
       const input = cellEditable.querySelector('input');
       input.focus();
       input.select();
 
       const suffixe = { kilometrage: ' km', litres: ' L', prix_total: ' €' }[champ];
-      const sauvegarder = async () => {
+
+      const annuler = (ev) => { ev.stopPropagation(); cellEditable.innerHTML = valeurOriginale; };
+      const sauvegarder = async (ev) => {
+        ev.stopPropagation();
         const nombre = parseFloat(input.value.replace(',', '.')) || 0;
         const affichage = champ === 'kilometrage' ? Math.round(nombre).toLocaleString('fr-FR') : nombre.toLocaleString('fr-FR', champ === 'prix_total' ? { minimumFractionDigits: 2 } : {});
         cellEditable.innerHTML = affichage + suffixe;
@@ -4678,8 +4688,13 @@
         }
         chargerPleinsReels(); // recalcule la conso et TICPE avec la valeur corrigée
       };
-      input.addEventListener('blur', sauvegarder);
-      input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') input.blur(); });
+
+      cellEditable.querySelector('.btn-valider-plein').addEventListener('click', sauvegarder);
+      cellEditable.querySelector('.btn-annuler-plein').addEventListener('click', annuler);
+      input.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') sauvegarder(ev);
+        if (ev.key === 'Escape') annuler(ev);
+      });
       return;
     }
 
