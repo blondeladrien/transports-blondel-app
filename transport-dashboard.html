@@ -790,6 +790,7 @@
                 <th>Chauffeur</th>
                 <th>Description</th>
                 <th>Montant</th>
+                <th></th>
               </tr>
             </thead>
             <tbody id="achats-pro-tbody"></tbody>
@@ -2772,11 +2773,20 @@
           <td>${a.chauffeur_nom}</td>
           <td>${a.description || '—'}</td>
           <td class="mono">${a.montant.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €</td>
+          <td><button class="btn-delete-row btn-supprimer-achat" data-achat-id="${a.id}" title="Supprimer">🗑</button></td>
         `;
         tbody.appendChild(tr);
       });
+      tbody.querySelectorAll('.btn-supprimer-achat').forEach(btn => {
+        btn.addEventListener('click', () => {
+          showConfirm('Supprimer définitivement cet achat exceptionnel ?', async () => {
+            await appelApi(`/achats/${btn.dataset.achatId}`, { method: 'DELETE' });
+            updateAchatsProTotalMois();
+          });
+        });
+      });
       if (achatsFiltres.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="placeholder" style="padding:24px;">Aucun achat professionnel déclaré.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="placeholder" style="padding:24px;">Aucun achat professionnel déclaré.</td></tr>';
       }
       document.getElementById('achats-pro-total-mois').textContent =
         total.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
