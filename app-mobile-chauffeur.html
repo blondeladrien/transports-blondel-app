@@ -1452,8 +1452,12 @@
               const dateVerif = dateDemarrage;
               const reponseVerif = await fetchAvecDelai(`${API_URL}/declarations/aujourdhui?date=${dateVerif}`, { headers: { 'Authorization': `Bearer ${authToken}` } }, 10000);
               const donneesVerif = await reponseVerif.json();
-              const kmReellementEnregistre = donneesVerif.declaration ? donneesVerif.declaration.km_arrivee : null;
-              if (kmReellementEnregistre === null || Math.round(kmReellementEnregistre) !== Math.round(arriveeNum)) {
+              // Après une clôture réussie, le cycle se referme immédiatement : "declaration"
+              // redevient volontairement vide (pour permettre une réouverture), donc ce n'est PAS
+              // là qu'il faut vérifier. La seule preuve fiable que le kilométrage a bien été
+              // enregistré est que km_depart_suggere reflète maintenant cette même valeur.
+              const kmReellementEnregistre = donneesVerif.km_depart_suggere;
+              if (kmReellementEnregistre == null || Math.round(kmReellementEnregistre) !== Math.round(arriveeNum)) {
                 envoiKmReussi = false;
               }
             } catch (e) { /* si la vérification échoue techniquement, on ne bloque pas la clôture pour autant */ }
