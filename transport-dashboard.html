@@ -4532,27 +4532,38 @@
 
   function updateConsoSummary() {
     const filtres = getConsoFiltres();
+    // Pour chaque véhicule : tous les kilométrages (pour trouver le premier et le dernier plein),
+    // et le litrage total des pleins qui correspondent à un segment mesuré (donc pas le tout
+    // premier plein connu, qui n'a pas de kilométrage précédent auquel se comparer).
     const parVehicule = {};
     document.querySelectorAll('#conso-tbody tr').forEach(row => {
       if (!ligneCorrespondFiltres(row, filtres)) return;
+      const km = parseFloat(row.dataset.km);
+      if (isNaN(km)) return;
+      if (!parVehicule[row.dataset.immat]) parVehicule[row.dataset.immat] = { kms: [], litresTotal: 0 };
+      parVehicule[row.dataset.immat].kms.push(km);
       const conso = parseFloat(row.dataset.conso);
-      if (!isNaN(conso)) {
-        if (!parVehicule[row.dataset.immat]) parVehicule[row.dataset.immat] = [];
-        parVehicule[row.dataset.immat].push(conso);
+      const litres = parseFloat(row.dataset.litres);
+      if (!isNaN(conso) && !isNaN(litres)) {
+        parVehicule[row.dataset.immat].litresTotal += litres;
       }
     });
     const summaryEl = document.getElementById('conso-summary');
-    const entries = Object.entries(parVehicule);
+    const entries = Object.entries(parVehicule).filter(([, d]) => d.kms.length > 1);
     if (entries.length === 0) {
       summaryEl.innerHTML = '<div class="placeholder" style="padding:24px;">Aucune donnée de consommation pour cette sélection.</div>';
       return;
     }
-    summaryEl.innerHTML = entries.map(([immat, valeurs]) => {
-      const moyenne = valeurs.reduce((a, b) => a + b, 0) / valeurs.length;
+    summaryEl.innerHTML = entries.map(([immat, d]) => {
+      // Moyenne PONDÉRÉE par la distance : (litrage total) ÷ (dernier km − premier km) × 100 —
+      // pas une simple moyenne des segments, qui donnerait autant de poids à un petit trajet
+      // qu'à un grand et fausserait le résultat réel.
+      const distanceTotale = Math.max(...d.kms) - Math.min(...d.kms);
+      const moyenne = distanceTotale > 0 ? (d.litresTotal / distanceTotale) * 100 : null;
       return `
         <div class="conso-card">
           <div class="stat-label">${immat} — conso. moyenne</div>
-          <div class="stat-value ok">${moyenne.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} L/100km</div>
+          <div class="stat-value ok">${moyenne != null ? moyenne.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' L/100km' : '—'}</div>
         </div>
       `;
     }).join('');
