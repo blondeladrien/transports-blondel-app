@@ -1118,8 +1118,17 @@
       if (avecConso.length === 0) {
         document.getElementById('conso-moyenne').textContent = 'Pas encore assez de pleins';
       } else {
-        const moyenne = avecConso.reduce((s, c) => s + c.conso, 0) / avecConso.length;
-        document.getElementById('conso-moyenne').textContent = moyenne.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' L/100km';
+        // Moyenne PONDÉRÉE par la distance, pas une simple moyenne des segments (qui donnerait
+        // autant de poids à un petit trajet qu'à un grand, faussant le résultat réel) :
+        // (litrage total consommé) ÷ (dernier km − premier km) × 100.
+        const premierKm = parKm[0].kilometrage;
+        const dernierKm = parKm[parKm.length - 1].kilometrage;
+        const litresTotal = avecConso.reduce((s, c) => s + (c.litres || 0), 0);
+        const distanceTotale = dernierKm - premierKm;
+        const moyenne = distanceTotale > 0 ? (litresTotal / distanceTotale) * 100 : null;
+        document.getElementById('conso-moyenne').textContent = moyenne != null
+          ? moyenne.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' L/100km'
+          : 'Pas encore assez de pleins';
       }
 
       // Aperçu rapide : les 5 derniers seulement (le détail complet s'ouvre via le bouton dédié)
