@@ -673,7 +673,18 @@
           <div class="panel" style="margin-top:20px;">
             <div class="panel-head">
               <h2>Consommation par chauffeur</h2>
-              <span style="font-size:12px; color:var(--text-dim);">Litres et coût cumulés par chauffeur</span>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <select id="conso-chauffeur-mois" style="background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:12px; padding:6px 10px; border-radius:7px;">
+                  <option value="tous">Tous les mois</option>
+                  <option value="0">Janvier</option><option value="1">Février</option><option value="2">Mars</option>
+                  <option value="3">Avril</option><option value="4">Mai</option><option value="5">Juin</option>
+                  <option value="6">Juillet</option><option value="7">Août</option><option value="8">Septembre</option>
+                  <option value="9">Octobre</option><option value="10">Novembre</option><option value="11">Décembre</option>
+                </select>
+                <select id="conso-chauffeur-annee" style="background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:12px; padding:6px 10px; border-radius:7px;">
+                  <option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option><option value="2028">2028</option>
+                </select>
+              </div>
             </div>
             <div class="conso-summary" id="conso-summary-chauffeur"></div>
           </div>
@@ -1798,11 +1809,11 @@
     const aujourdhui = new Date();
     const moisActuel = String(aujourdhui.getMonth());
     const anneeActuelle = String(aujourdhui.getFullYear());
-    ['planning-mois', 'periode-mois', 'facturation-mois', 'client-bilan-mois'].forEach(id => {
+    ['planning-mois', 'periode-mois', 'facturation-mois', 'client-bilan-mois', 'conso-chauffeur-mois'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = moisActuel;
     });
-    ['planning-annee', 'periode-annee', 'facturation-annee', 'ticpe-annee', 'client-bilan-annee'].forEach(id => {
+    ['planning-annee', 'periode-annee', 'facturation-annee', 'ticpe-annee', 'client-bilan-annee', 'conso-chauffeur-annee'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = anneeActuelle;
     });
@@ -4616,8 +4627,13 @@
   function updateConsoSummaryChauffeur() {
     const filtres = getConsoFiltres();
     const parChauffeur = {};
+    const moisSel = document.getElementById('conso-chauffeur-mois').value;
+    const anneeSel = document.getElementById('conso-chauffeur-annee').value;
     document.querySelectorAll('#conso-tbody tr').forEach(row => {
       if (!ligneCorrespondFiltres(row, filtres)) return;
+      const d = row.dataset.date || '';
+      if (d.slice(0, 4) !== anneeSel) return;
+      if (moisSel !== 'tous' && parseInt(d.slice(5, 7), 10) - 1 !== parseInt(moisSel, 10)) return;
       const litres = parseFloat(row.dataset.litres) || 0;
       const prix = parseEuro(row.dataset.prix || '0');
       const nom = row.dataset.chauffeur;
@@ -4629,7 +4645,7 @@
     const summaryEl = document.getElementById('conso-summary-chauffeur');
     const entries = Object.entries(parChauffeur);
     if (entries.length === 0) {
-      summaryEl.innerHTML = '<div class="placeholder" style="padding:24px;">Aucun plein enregistré pour cette sélection.</div>';
+      summaryEl.innerHTML = '<div class="placeholder" style="padding:24px;">Aucun plein enregistré pour cette période.</div>';
       return;
     }
     summaryEl.innerHTML = entries.map(([nom, data]) => `
@@ -4641,6 +4657,9 @@
     `).join('');
   }
   updateConsoSummaryChauffeur();
+  ['conso-chauffeur-mois', 'conso-chauffeur-annee'].forEach(id => {
+    document.getElementById(id).addEventListener('change', updateConsoSummaryChauffeur);
+  });
 
   // --- TICPE : litrage par tracteur, vue mensuelle ou trimestrielle ---
   function getTracteursImmats() {
