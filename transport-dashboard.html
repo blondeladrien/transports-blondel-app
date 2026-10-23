@@ -1609,7 +1609,10 @@
         <button class="modal-close" id="modal-jour-detail-close">✕</button>
       </div>
       <div class="modal-body">
+        <div id="jour-detail-edition"></div>
+        <div style="font-weight:600; margin:4px 0 8px;">Missions du jour</div>
         <div id="jour-detail-missions-liste"></div>
+        <div id="jour-detail-ajout-mission"></div>
       </div>
       <div class="modal-foot">
         <button class="btn-ghost" id="modal-jour-detail-close-2">Fermer</button>
@@ -3023,7 +3026,7 @@
       const toursTexte = missionsRealisees.length > 0
         ? `<span class="mono">${totalTours}</span>`
         : '<span style="color:var(--text-dim);">—</span>';
-      const cliquable = missionsDuJour.length > 0;
+      const cliquable = true;
       return `
         <tr class="${cliquable ? 'ligne-jour-cliquable' : ''}" data-date-iso="${dateISO}" data-chauffeur-affiche="${nomChauffeurAffiche || ''}" style="${cliquable ? 'cursor:pointer;' : ''}">
           <td class="mono">${dateAffichee}</td>
@@ -3032,7 +3035,7 @@
           <td>${toursTexte}</td>
           <td class="mono">${kmTexte}</td>
           <td>${indemTexte}</td>
-          <td>${cliquable ? '<span style="color:var(--text-dim);">Voir le détail ›</span>' : ''}</td>
+          <td><span style="color:var(--text-dim);">Voir / modifier ›</span></td>
         </tr>
       `;
     }
@@ -3102,10 +3105,105 @@
               </div>
             ` : ''}
             ${mission.remarque ? `<div style="font-size:13px; color:var(--text-dim); margin-top:4px;">Remarque : ${mission.remarque}</div>` : ''}
-            <button class="btn-delete-row btn-supprimer-mission-planning" data-mission-id="${mission.id}" style="margin-top:10px;">🗑 Supprimer cette mission</button>
+            <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+              <button class="btn-ghost btn-basculer-realisee" data-mission-id="${mission.id}" data-cible="${mission.realisee ? '0' : '1'}" style="padding:4px 10px; font-size:12px;">${mission.realisee ? 'Marquer non réalisée' : 'Marquer réalisée'}</button>
+              <button class="btn-delete-row btn-supprimer-mission-planning" data-mission-id="${mission.id}">🗑 Supprimer cette mission</button>
+            </div>
           </div>
         `).join('');
+        // --- Correction manuelle de la journée (indemnités, kilomètres) ---
+        const indemJour = indemnitesParJour[dateISO] || {};
+        const kmJour = kmParcouruParChauffeurEtJour[`${chauffeurId}_${dateISO}`];
+        const styleInput = 'background:var(--panel-2); border:1px solid var(--line); color:var(--text); border-radius:6px; padding:4px 8px; font-family:inherit;';
+        document.getElementById('jour-detail-edition').innerHTML = `
+          <div style="border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:10px;">
+            <div style="font-weight:600; margin-bottom:8px;">Indemnités</div>
+            <div style="display:flex; flex-wrap:wrap; gap:12px;">
+              ${Object.keys(NOMS_INDEMNITES).map(k => `<label style="font-size:13px; display:flex; gap:6px; align-items:center;"><input type="checkbox" class="check-indem-jour" data-cle="${k}" ${indemJour[k] ? 'checked' : ''}> ${NOMS_INDEMNITES[k]}</label>`).join('')}
+            </div>
+            <button class="btn-ghost" id="btn-enregistrer-indem-jour" style="margin-top:10px; padding:4px 10px; font-size:12px;">Enregistrer les indemnités</button>
+          </div>
+          <div style="border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:14px;">
+            <div style="font-weight:600; margin-bottom:8px;">Kilomètres parcourus</div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <input type="number" min="0" id="input-km-jour" value="${kmJour != null ? kmJour : ''}" placeholder="ex. 320" style="width:110px; ${styleInput}">
+              <span style="font-size:13px;">km</span>
+              <button class="btn-ghost" id="btn-enregistrer-km-jour" style="padding:4px 10px; font-size:12px;">Enregistrer les km</button>
+            </div>
+            <div style="font-size:12px; color:var(--text-dim); margin-top:6px;">Met aussi à jour le kilométrage du véhicule, comme une clôture du chauffeur.</div>
+          </div>`;
+        document.getElementById('jour-detail-ajout-mission').innerHTML = `
+          <div style="border:1px dashed var(--line); border-radius:10px; padding:14px; margin-top:4px;">
+            <div style="font-weight:600; margin-bottom:8px;">Ajouter une mission réalisée</div>
+            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
+              <select id="ajout-mission-client" style="${styleInput}">
+                <option value="">Client non renseigné</option>
+                ${clientsConnus.map(c => `<option value="${c.nom}">${c.nom}</option>`).join('')}
+              </select>
+              <input type="number" min="0" id="ajout-mission-tours" placeholder="Tours" style="width:80px; ${styleInput}">
+              <button class="btn-ghost" id="btn-ajouter-mission-realisee" style="padding:4px 10px; font-size:12px;">Ajouter</button>
+            </div>
+            <div style="font-size:12px; color:var(--text-dim); margin-top:6px;">Pour votre suivi : n'apparaît pas sur le téléphone du chauffeur, mais compte dans la facturation et les bilans.</div>
+          </div>`;
+
+        async function envoyerCorrectionJournee(btn, corps) {
+          btn.disabled = true;
+          const texte = btn.textContent;
+          btn.textContent = '...';
+          const rep = await appelApi('/planning/journee', {
+            method: 'PUT',
+            body: JSON.stringify({ chauffeur_id: parseInt(chauffeurId, 10), date_jour: dateISO, ...corps })
+          });
+          btn.textContent = rep ? '✓ Enregistré' : 'Échec';
+          if (rep) chargerPlanningMensuel();
+          setTimeout(() => { btn.disabled = false; btn.textContent = texte; }, 1500);
+        }
+        document.getElementById('btn-enregistrer-indem-jour').addEventListener('click', (e) => {
+          const indemnites = {};
+          document.querySelectorAll('.check-indem-jour').forEach(c => { indemnites[c.dataset.cle] = c.checked; });
+          envoyerCorrectionJournee(e.currentTarget, { indemnites });
+        });
+        document.getElementById('btn-enregistrer-km-jour').addEventListener('click', (e) => {
+          const v = document.getElementById('input-km-jour').value;
+          if (v === '' || isNaN(parseInt(v, 10)) || parseInt(v, 10) < 0) return;
+          envoyerCorrectionJournee(e.currentTarget, { km_parcourus: parseInt(v, 10) });
+        });
+        document.getElementById('btn-ajouter-mission-realisee').addEventListener('click', async (e) => {
+          const btn = e.currentTarget;
+          const tours = document.getElementById('ajout-mission-tours').value;
+          btn.disabled = true;
+          const rep = await appelApi('/missions', {
+            method: 'POST',
+            body: JSON.stringify({
+              chauffeur_id: parseInt(chauffeurId, 10), date_mission: dateISO,
+              client: document.getElementById('ajout-mission-client').value,
+              interne_seulement: true, nombre_tours: tours === '' ? null : parseInt(tours, 10)
+            })
+          });
+          btn.disabled = false;
+          if (rep) {
+            document.getElementById('modal-jour-detail-overlay').classList.remove('active');
+            chargerPlanningMensuel();
+          }
+        });
+
         document.getElementById('modal-jour-detail-overlay').classList.add('active');
+
+        // Marquer une mission réalisée / non réalisée (comme si le chauffeur l'avait validée)
+        document.querySelectorAll('.btn-basculer-realisee').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            btn.disabled = true;
+            const rep = await appelApi(`/missions/${btn.dataset.missionId}`, {
+              method: 'PATCH',
+              body: JSON.stringify({ realisee: btn.dataset.cible === '1' })
+            });
+            btn.disabled = false;
+            if (rep) {
+              document.getElementById('modal-jour-detail-overlay').classList.remove('active');
+              chargerPlanningMensuel();
+            }
+          });
+        });
 
         // Attaché ICI, à chaque ouverture, car ces boutons n'existent qu'une fois le détail affiché —
         // les attacher plus tôt (au chargement de la page) ne trouvait aucun bouton à relier.
