@@ -480,6 +480,10 @@
         <span class="nav-icon-wrap"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg></span>
         Compte de résultat
       </button>
+      <button class="nav-item" data-view="g-salaires" data-espace="gestion" style="display:none;">
+        <span class="nav-icon-wrap"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6"/><path d="M17 7h4M17 11h4M17 15h4"/></svg></span>
+        Salaires et DSN
+      </button>
       <button class="nav-item" data-view="g-charges" data-espace="gestion" style="display:none;">
         <span class="nav-icon-wrap"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h4"/></svg></span>
         Charges et TVA
@@ -1200,6 +1204,42 @@
         </div>
       </div>
 
+      <div class="view" id="view-g-salaires">
+        <div class="panel" style="margin-bottom:20px;">
+          <div class="panel-head">
+            <h2 id="sal-titre">Salaires — mois</h2>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <select id="sal-mois" style="background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:12px; padding:6px 10px; border-radius:7px;">
+                <option value="0">Janvier</option><option value="1">Février</option><option value="2">Mars</option><option value="3">Avril</option>
+                <option value="4">Mai</option><option value="5">Juin</option><option value="6">Juillet</option><option value="7">Août</option>
+                <option value="8">Septembre</option><option value="9">Octobre</option><option value="10">Novembre</option><option value="11">Décembre</option>
+              </select>
+              <select id="sal-annee" style="background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:12px; padding:6px 10px; border-radius:7px;">
+                <option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option><option value="2028">2028</option>
+              </select>
+            </div>
+          </div>
+          <div style="font-size:12px; color:var(--text-dim); padding:0 18px 12px;">Saisissez le salaire NET du mois de chaque chauffeur (indemnités de route incluses), puis, en bas, le montant total de la DSN du mois (cotisations sociales et prélèvements à payer). Le coût du mois = salaires nets + DSN, et alimente le compte de résultat. Aucune TVA sur les salaires. Chaque champ s'enregistre dès que vous validez.</div>
+          <div style="overflow-x:auto;">
+            <table class="table-compta">
+              <thead><tr><th>Chauffeur</th><th class="num">Salaire net (€)</th></tr></thead>
+              <tbody id="sal-tbody"></tbody>
+            </table>
+          </div>
+          <div class="placeholder" id="sal-vide" style="display:none;">Aucun chauffeur : ajoutez-en dans l'espace Transport.</div>
+          <div id="sal-cout-mois" style="padding:12px 18px; font-size:13px; color:var(--text-dim);"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2>Suivi de la DSN du mois</h2></div>
+          <div style="display:flex; flex-wrap:wrap; gap:18px; align-items:flex-end; padding:16px 18px;">
+            <div class="field" style="margin:0;"><label>Montant total de la DSN (€)</label><input type="text" inputmode="decimal" id="dsn-montant" placeholder="ex. 3 412,00" style="width:150px;"></div>
+            <div class="field" style="margin:0;"><label>Date de dépôt de la DSN</label><input type="date" id="dsn-date"></div>
+            <div class="field" style="margin:0; flex:1; min-width:220px;"><label>Note (n° de dépôt, remarque...)</label><input type="text" id="dsn-note" placeholder="ex. prélevé le 15/04"></div>
+            <button class="btn" id="dsn-enregistrer">Enregistrer</button>
+          </div>
+        </div>
+      </div>
+
       <div class="view" id="view-g-charges">
         <div class="panel" style="margin-bottom:20px;">
           <div class="panel-head"><h2>TVA des charges reprises automatiquement</h2></div>
@@ -1210,7 +1250,7 @@
               <input type="number" id="g-tva-achats" step="0.1" min="0" max="100" style="width:120px;"></div>
             <button class="btn" id="g-enregistrer-tva">Enregistrer</button>
           </div>
-          <div style="font-size:12px; color:var(--text-dim); padding:6px 18px 14px;">Les montants saisis dans l'app (pleins, achats pro) sont traités comme TTC. Les indemnités de route n'ont pas de TVA. Les ventes se saisissent en HT dans l'onglet Facturation (espace Transport), avec leur taux de TVA sur chaque ligne.</div>
+          <div style="font-size:12px; color:var(--text-dim); padding:6px 18px 14px;">Les pleins et les achats pro sont saisis en TTC par les chauffeurs : ils sont convertis en HT automatiquement avec ces taux. Les indemnités de route ne sont plus comptées à part : elles sont incluses dans les salaires (onglet Salaires et DSN). Les ventes se saisissent en HT dans l'onglet Facturation (espace Transport), avec leur taux de TVA sur chaque ligne.</div>
         </div>
         <div class="panel">
           <div class="panel-head">
@@ -2658,6 +2698,7 @@
     facturation: 'Facturation',
     clients: 'Clients',
     'g-resultat': 'Gestion — Compte de résultat',
+    'g-salaires': 'Gestion — Salaires et DSN',
     'g-charges': 'Gestion — Charges et TVA'
   };
   items.forEach(item => {
@@ -2674,6 +2715,7 @@
       if (key === 'facturation') chargerFacturationReelle();
       if (key === 'g-resultat') chargerCompteResultat();
       if (key === 'g-charges') chargerChargesGestion();
+      if (key === 'g-salaires') chargerSalaires();
       if (key === 'clients') chargerClientsReels();
       if (key === 'dashboard') { chargerTableauDeBord(); chargerCloturesDuJour(); rafraichirAlertes(); }
       if (key === 'historique') chargerHistoriqueReel();
@@ -5564,6 +5606,88 @@
       })
     });
     if (rep) { fermerFG(); chargerFacturationReelle(); }
+  });
+
+
+  // ============================================================
+  // GESTION : SALAIRES ET DSN
+  // ============================================================
+  (function initMoisSalaires() {
+    const n = new Date();
+    document.getElementById('sal-mois').value = String(n.getMonth());
+    document.getElementById('sal-annee').value = String(n.getFullYear());
+  })();
+
+  const moisSalairesISO = () => `${document.getElementById('sal-annee').value}-${String(parseInt(document.getElementById('sal-mois').value, 10) + 1).padStart(2, '0')}`;
+  const lireNombreSaisi = (txt) => {
+    const brut = String(txt).replace(/[^\d.,-]/g, '').replace(',', '.');
+    return brut === '' ? null : parseFloat(brut);
+  };
+  const formatChamp = (n) => n == null ? '' : Number(n).toFixed(2).replace('.', ',');
+
+  function recalculerTotauxSalaires() {
+    let net = 0;
+    document.querySelectorAll('#sal-tbody tr[data-chauffeur-id]').forEach(tr => {
+      net += lireNombreSaisi(tr.querySelector('.sal-net').value) || 0;
+    });
+    net = Math.round(net * 100) / 100;
+    const tot = document.getElementById('sal-total');
+    if (tot) tot.querySelector('.t-net').textContent = euro(net);
+    const dsn = Math.round((lireNombreSaisi(document.getElementById('dsn-montant').value) || 0) * 100) / 100;
+    document.getElementById('sal-cout-mois').innerHTML =
+      `Coût du mois pour la société : <strong style="color:var(--text);">${euro(Math.round((net + dsn) * 100) / 100)}</strong> (salaires nets ${euro(net)} + DSN ${euro(dsn)})`;
+  }
+
+  async function chargerSalaires() {
+    const mois = moisSalairesISO();
+    const nomMois = document.getElementById('sal-mois').selectedOptions[0].textContent;
+    document.getElementById('sal-titre').textContent = `Salaires — ${nomMois} ${document.getElementById('sal-annee').value}`;
+    const d = await appelApi(`/gestion/salaires?mois=${mois}`);
+    if (!d) return;
+    document.getElementById('sal-vide').style.display = d.lignes.length === 0 ? 'block' : 'none';
+    document.getElementById('sal-tbody').innerHTML = d.lignes.map(l => `
+      <tr data-chauffeur-id="${l.chauffeur_id}">
+        <td style="font-family:inherit; text-align:left;">${echapper(l.chauffeur_nom)}</td>
+        <td class="num"><input type="text" inputmode="decimal" class="input-montant sal-net" style="width:130px;" placeholder="0,00" value="${formatChamp(l.net_paye)}"></td>
+      </tr>`).join('') + (d.lignes.length ? `
+      <tr class="ligne-total" id="sal-total"><td>Total des salaires nets</td><td class="num t-net"></td></tr>` : '');
+
+    document.querySelectorAll('#sal-tbody tr[data-chauffeur-id]').forEach(tr => {
+      const input = tr.querySelector('.sal-net');
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur(); });
+      input.addEventListener('input', recalculerTotauxSalaires);
+      input.addEventListener('change', async () => {
+        const v = lireNombreSaisi(input.value);
+        input.value = v == null || isNaN(v) ? '' : formatChamp(Math.round(v * 100) / 100);
+        recalculerTotauxSalaires();
+        const rep = await appelApi('/gestion/salaires', {
+          method: 'PUT',
+          body: JSON.stringify({ mois, chauffeur_id: parseInt(tr.dataset.chauffeurId, 10), net_paye: v == null || isNaN(v) ? null : v })
+        });
+        if (rep) {
+          input.style.borderColor = 'var(--ok)';
+          setTimeout(() => { input.style.borderColor = ''; }, 1200);
+        }
+      });
+    });
+
+    document.getElementById('dsn-date').value = d.dsn.date_depot || '';
+    document.getElementById('dsn-note').value = d.dsn.note || '';
+    document.getElementById('dsn-montant').value = formatChamp(d.dsn.montant);
+    recalculerTotauxSalaires();
+  }
+  document.getElementById('dsn-montant').addEventListener('input', recalculerTotauxSalaires);
+  ['sal-mois', 'sal-annee'].forEach(id => document.getElementById(id).addEventListener('change', chargerSalaires));
+
+  document.getElementById('dsn-enregistrer').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    const rep = await appelApi('/gestion/dsn', {
+      method: 'PUT',
+      body: JSON.stringify({ mois: moisSalairesISO(), date_depot: document.getElementById('dsn-date').value, montant: lireNombreSaisi(document.getElementById('dsn-montant').value), note: document.getElementById('dsn-note').value.trim() })
+    });
+    btn.textContent = rep ? '✓ Enregistré' : 'Échec';
+    setTimeout(() => { btn.disabled = false; btn.textContent = 'Enregistrer'; }, 1500);
   });
 
 </script>
