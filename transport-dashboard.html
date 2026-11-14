@@ -3030,8 +3030,13 @@
   updatePeriodeAchatsProChauffeurFiltre();
   document.getElementById('achats-pro-chauffeur-filtre').addEventListener('change', updateAchatsProTotalMois);
 
+  let typesAchats = [];
   async function updateAchatsProTotalMois() {
     const chauffeurFiltre = document.getElementById('achats-pro-chauffeur-filtre').value;
+    if (typesAchats.length === 0) {
+      const liste = await appelApi('/achats/categories');
+      if (liste) typesAchats = liste;
+    }
     const achats = await appelApi('/achats?type=pro');
     const tbody = document.getElementById('achats-pro-tbody');
 
@@ -3049,7 +3054,7 @@
         tr.innerHTML = `
           <td class="mono">${dateAffichee}</td>
           <td>${a.chauffeur_nom}</td>
-          <td>${a.categorie || '<span style="color:var(--text-dim);">—</span>'}</td>
+          <td><select class="select-tva select-type-achat" data-achat-id="${a.id}" style="max-width:190px;"><option value="">— Choisir —</option>${typesAchats.map(t => `<option value="${echapper(t.nom)}" ${t.nom === a.categorie ? 'selected' : ''}>${echapper(t.nom)}</option>`).join('')}</select></td>
           <td>${a.description || '—'}</td>
           <td class="mono">${a.montant.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €</td>
           <td><select class="select-tva select-tva-achat" data-achat-id="${a.id}">${[20, 10, 5.5, 2.1, 0].concat([20, 10, 5.5, 2.1, 0].includes(a.taux_effectif) ? [] : [a.taux_effectif]).map(t => `<option value="${t}" ${t === a.taux_effectif ? 'selected' : ''}>${String(t).replace('.', ',')} %</option>`).join('')}</select></td>
@@ -3057,6 +3062,13 @@
           <td><button class="btn-delete-row btn-supprimer-achat" data-achat-id="${a.id}" title="Supprimer">🗑</button></td>
         `;
         tbody.appendChild(tr);
+      });
+      // Type d'achat modifiable sur les achats déjà effectués : la TVA est déduite du type choisi
+      tbody.querySelectorAll('.select-type-achat').forEach(sel => {
+        sel.addEventListener('change', async () => {
+          const rep = await appelApi(`/achats/${sel.dataset.achatId}`, { method: 'PATCH', body: JSON.stringify({ categorie: sel.value }) });
+          if (rep) updateAchatsProTotalMois();
+        });
       });
       tbody.querySelectorAll('.select-tva-achat').forEach(sel => {
         sel.addEventListener('change', async () => {
