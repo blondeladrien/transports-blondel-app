@@ -6471,9 +6471,9 @@
       lignes.push({ date, type, client, detail, ht: htv, taux, ttc: r2(htv + tva) });
     };
     (facturation || []).forEach(l => {
-      const date = l.date_facturation || l.date_mission;
+      const date = l.date_mission;
       if (!date || !date.startsWith(annee + '-') || l.facture_groupee_id || l.montant_ht == null) return;
-      vente(date, 'Vente', l.client, [l.numero_facture ? 'Facture ' + l.numero_facture : null, 'mission du ' + new Date(l.date_mission + 'T00:00:00').toLocaleDateString('fr-FR'), l.chauffeur_nom].filter(Boolean).join(' · '), l.montant_ht, l.taux_tva);
+      vente(date, 'Vente', l.client, [l.numero_facture ? 'Facture ' + l.numero_facture : null, l.date_facturation ? 'facturée le ' + new Date(l.date_facturation + 'T00:00:00').toLocaleDateString('fr-FR') : null, l.chauffeur_nom].filter(Boolean).join(' · '), l.montant_ht, l.taux_tva);
     });
     (groupees || []).filter(f => (f.mois || '').startsWith(annee + '-')).forEach(f => {
       vente(f.mois + '-01', 'Globale', f.clients || 'Facture globale', [f.numero_facture ? 'Facture ' + f.numero_facture : null, f.nb_lignes ? f.nb_lignes + ' ligne(s) regroupée(s)' : null].filter(Boolean).join(' · ') || '—', f.montant_ht, f.taux_tva);
