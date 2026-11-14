@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Espace comptable — Transports A.Blondel</title>
+<style>
+  :root{
+    --bg:#0F1319; --panel:#171C24; --panel-2:#1E2530; --line:#2A3140; --text:#EDEFF2; --text-dim:#8B94A3;
+    --accent:#3E6FBF; --accent-2:#5C8ADD; --danger:#EF5A63; --ok:#45C285;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px;
+    background: radial-gradient(1100px 600px at 15% -10%, rgba(62,111,191,0.09), transparent 60%), radial-gradient(900px 500px at 100% 0%, rgba(92,138,221,0.06), transparent 55%), var(--bg);
+    color:var(--text); font-family:'IBM Plex Sans', -apple-system, 'Segoe UI', sans-serif; -webkit-font-smoothing:antialiased;
+  }
+  .carte{width:400px; max-width:100%; background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:36px 32px; box-shadow:0 24px 60px rgba(0,0,0,0.45);}
+  .marque{text-align:center; margin-bottom:26px;}
+  .marque img{width:56px; height:56px; object-fit:contain; margin-bottom:12px; display:none;}
+  .nom{font-size:19px; font-weight:600;}
+  .sous{font-size:13px; color:var(--text-dim); margin-top:4px;}
+  .badge{display:inline-block; margin-top:12px; font-size:11.5px; padding:3px 10px; border-radius:20px; background:rgba(92,138,221,0.14); color:var(--accent-2); border:1px solid rgba(92,138,221,0.35);}
+  .champ{margin-bottom:16px;}
+  label{display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px;}
+  input{width:100%; background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:14px; padding:11px 13px; border-radius:9px; font-family:inherit;}
+  input:focus{outline:none; border-color:var(--accent);}
+  button{width:100%; background:linear-gradient(160deg, var(--accent-2), var(--accent)); color:#fff; border:none; font-size:14px; font-weight:600; padding:12px; border-radius:9px; cursor:pointer; margin-top:6px; font-family:inherit;}
+  button:hover{filter:brightness(1.08);}
+  button:disabled{opacity:.7; cursor:wait;}
+  .erreur{color:var(--danger); font-size:13px; margin-top:12px; text-align:center; display:none;}
+  .info{color:var(--text-dim); font-size:13px; margin-top:12px; text-align:center; display:none;}
+  .note{font-size:12px; color:var(--text-dim); text-align:center; margin-top:20px; line-height:1.5;}
+</style>
+</head>
+<body>
+  <form class="carte" id="formulaire" autocomplete="on">
+    <div class="marque">
+      <img id="logo" alt="Logo">
+      <div class="nom">Transports A.Blondel</div>
+      <div class="sous">Espace comptable</div>
+      <span class="badge">Consultation en lecture seule</span>
+    </div>
+    <div class="champ"><label for="identifiant">Identifiant</label><input type="text" id="identifiant" autocomplete="username" required></div>
+    <div class="champ"><label for="mdp">Mot de passe</label><input type="password" id="mdp" autocomplete="current-password" required></div>
+    <button type="submit" id="bouton">Se connecter</button>
+    <div class="erreur" id="erreur"></div>
+    <div class="info" id="info"></div>
+    <div class="note">Vous accédez au compte de résultat, aux charges, aux produits, aux salaires et aux graphiques de l'entreprise. Aucune modification n'est possible.</div>
+  </form>
+
+<script>
+  // Même serveur que le tableau de bord
+  const API_URL = 'https://transports-blondel-backend.onrender.com/api';
+  const JETON = 'jeton_comptable';
+
+  // Logo de l'entreprise s'il a été enregistré dans ce navigateur
+  try { const logo = localStorage.getItem('logoPersonnaliseBlondel'); if (logo) { const img = document.getElementById('logo'); img.src = logo; img.style.display = 'inline-block'; } } catch (e) { /* pas de logo */ }
+
+  const erreur = document.getElementById('erreur'), info = document.getElementById('info'), bouton = document.getElementById('bouton');
+  if (new URLSearchParams(location.search).get('expire')) { erreur.textContent = 'Votre session a expiré ou l\'accès a été modifié. Reconnectez-vous.'; erreur.style.display = 'block'; }
+
+  // Déjà connecté dans cet onglet ? on va directement au tableau
+  try { if (sessionStorage.getItem(JETON) && !new URLSearchParams(location.search).get('expire')) location.replace('transport-dashboard.html?acces=comptable'); } catch (e) { /* rien */ }
+
+  document.getElementById('formulaire').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    erreur.style.display = 'none';
+    bouton.disabled = true; bouton.textContent = 'Connexion en cours…';
+    info.textContent = 'Si le serveur était en veille, cela peut prendre jusqu\'à une minute.'; info.style.display = 'block';
+    try {
+      const limite = new Promise((_, rejeter) => setTimeout(() => rejeter(new Error('delai')), 60000));
+      const reponse = await Promise.race([fetch(`${API_URL}/auth/login-comptable`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifiant: document.getElementById('identifiant').value.trim(), mot_de_passe: document.getElementById('mdp').value })
+      }), limite]);
+      const donnees = await reponse.json().catch(() => ({}));
+      if (reponse.ok && donnees.token) {
+        try { sessionStorage.setItem(JETON, donnees.token); } catch (err) { throw new Error('stockage'); }
+        location.href = 'transport-dashboard.html?acces=comptable';
+        return;
+      }
+      erreur.textContent = donnees.erreur || 'Connexion impossible.';
+    } catch (err) {
+      erreur.textContent = err.message === 'stockage'
+        ? 'Votre navigateur bloque le stockage de session : désactivez la navigation privée ou autorisez-le.'
+        : 'Impossible de contacter le serveur. Réessayez dans un instant.';
+    }
+    erreur.style.display = 'block'; info.style.display = 'none';
+    bouton.disabled = false; bouton.textContent = 'Se connecter';
+  });
+</script>
+</body>
+</html>
