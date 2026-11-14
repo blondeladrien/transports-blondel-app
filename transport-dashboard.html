@@ -1149,7 +1149,13 @@
           <div class="panel-head">
             <h2 id="g-titre">Compte de résultat — exercice 2026</h2>
             <div style="display:flex; gap:8px; align-items:center;">
-              <span style="font-size:12px; color:var(--text-dim);">Exercice (1er janv. → 31 déc.)</span>
+              <span style="font-size:12px; color:var(--text-dim);">Période</span>
+              <select id="g-mois" style="background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:12px; padding:6px 10px; border-radius:7px;">
+                <option value="tous">Toute l'année</option>
+                <option value="0">Janvier</option><option value="1">Février</option><option value="2">Mars</option><option value="3">Avril</option>
+                <option value="4">Mai</option><option value="5">Juin</option><option value="6">Juillet</option><option value="7">Août</option>
+                <option value="8">Septembre</option><option value="9">Octobre</option><option value="10">Novembre</option><option value="11">Décembre</option>
+              </select>
               <select id="g-annee" style="background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:12px; padding:6px 10px; border-radius:7px;">
                 <option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option><option value="2028">2028</option>
               </select>
@@ -5243,11 +5249,35 @@
     ['g-annee', 'g-charges-annee'].forEach(id => { document.getElementById(id).value = an; });
   })();
 
+  let dernierCompteResultat = null;
+  const NOMS_MOIS_LONGS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+
   async function chargerCompteResultat() {
     const annee = document.getElementById('g-annee').value;
-    document.getElementById('g-titre').textContent = `Compte de résultat — exercice ${annee}`;
     const d = await appelApi(`/gestion/compte-resultat?annee=${annee}`);
     if (!d) return;
+    dernierCompteResultat = d;
+    afficherCompteResultat();
+  }
+
+  // Affiche l'exercice entier, ou un seul mois (choix « Toute l'année » / janvier... décembre)
+  function afficherCompteResultat() {
+    const d = dernierCompteResultat;
+    if (!d) return;
+    const annee = d.annee;
+    const choix = document.getElementById('g-mois').value;
+    const m = choix === 'tous' ? null : parseInt(choix, 10);
+    const periode = m === null ? `exercice ${annee}` : `${NOMS_MOIS_LONGS[m]} ${annee}`;
+    document.getElementById('g-titre').textContent = `Compte de résultat — ${periode}`;
+
+    // Montants d'un poste (bloc) sur la période choisie
+    const v = (b) => m === null
+      ? { ht: b.total_ht, tva: b.total_tva, ttc: b.total_ttc }
+      : { ht: b.ht[m], tva: b.tva[m], ttc: b.ttc[m] };
+    const r2 = (n) => Math.round(n * 100) / 100;
+
+    const prod = v(d.produits), chg = v(d.charges_totales);
+    const resHT = r2(prod.ht - chg.ht), resTTC = r2(prod.ttc - chg.ttc), tvaAPayer = r2(prod.tva - chg.tva);
 
     const alerte = document.getElementById('g-alerte');
     if (d.nb_lignes_sans_montant > 0) {
@@ -5257,31 +5287,42 @@
       alerte.style.display = 'none';
     }
 
-    const classeRes = d.resultat_ht >= 0 ? 'ok' : 'danger';
+    const marge = prod.ht !== 0 ? (resHT / prod.ht * 100) : null;
+    const classeRes = resHT >= 0 ? 'ok' : 'danger';
     document.getElementById('g-kpis').innerHTML = `
-      <div class="conso-card"><div class="stat-label">Chiffre d'affaires HT</div><div class="stat-value info">${euro(d.produits.total_ht)}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">${euro(d.produits.total_ttc)} TTC · ${d.nb_lignes_facturees} ligne(s)</div></div>
-      <div class="conso-card"><div class="stat-label">Charges HT</div><div class="stat-value warn">${euro(d.charges_totales.total_ht)}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">${euro(d.charges_totales.total_ttc)} TTC</div></div>
-      <div class="conso-card"><div class="stat-label">Résultat HT</div><div class="stat-value ${classeRes}">${euro(d.resultat_ht)}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">Résultat TTC : ${euro(d.resultat_ttc)}</div></div>
-      <div class="conso-card"><div class="stat-label">TVA ${d.tva_a_payer >= 0 ? 'à reverser' : 'à récupérer'}</div><div class="stat-value">${euro(Math.abs(d.tva_a_payer))}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">collectée ${euro(d.tva_collectee)} − déductible ${euro(d.tva_deductible)}</div></div>`;
+      <div class="conso-card"><div class="stat-label">Chiffre d'affaires HT</div><div class="stat-value info">${euro(prod.ht)}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">${euro(prod.ttc)} TTC</div></div>
+      <div class="conso-card"><div class="stat-label">Charges HT</div><div class="stat-value warn">${euro(chg.ht)}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">${euro(chg.ttc)} TTC</div></div>
+      <div class="conso-card"><div class="stat-label">Résultat HT</div><div class="stat-value ${classeRes}">${euro(resHT)}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">Résultat TTC : ${euro(resTTC)}</div></div>
+      <div class="conso-card"><div class="stat-label">Rentabilité</div><div class="stat-value ${classeRes}">${marge === null ? '—' : marge.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %'}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">résultat HT ÷ CA HT</div></div>
+      <div class="conso-card"><div class="stat-label">TVA ${tvaAPayer >= 0 ? 'à reverser' : 'à récupérer'}</div><div class="stat-value">${euro(Math.abs(tvaAPayer))}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">collectée ${euro(prod.tva)} − déductible ${euro(chg.tva)}</div></div>`;
 
-    const ligne = (nom, b, cls) => `<tr class="${cls || ''}"><td>${echapper(nom)}</td><td class="num">${euro(b.total_ht)}</td><td class="num">${euro(b.total_tva)}</td><td class="num">${euro(b.total_ttc)}</td></tr>`;
+    const ligne = (nom, b, cls) => { const x = v(b); return `<tr class="${cls || ''}"><td>${echapper(nom)}</td><td class="num">${euro(x.ht)}</td><td class="num">${euro(x.tva)}</td><td class="num">${euro(x.ttc)}</td></tr>`; };
     let html = `<tr class="ligne-section"><td colspan="4">Produits d'exploitation</td></tr>` + ligne('Prestations de transport (ventes)', d.produits);
     html += `<tr class="ligne-section"><td colspan="4">Charges d'exploitation</td></tr>`;
     Object.entries(d.charges).forEach(([nom, b]) => { html += ligne(nom, b); });
     html += ligne('Total des charges', d.charges_totales, 'ligne-total');
-    html += `<tr class="ligne-total"><td>RÉSULTAT DE L'EXERCICE</td><td class="num" style="color:var(--${d.resultat_ht >= 0 ? 'ok' : 'danger'});">${euro(d.resultat_ht)}</td><td class="num">${euro(d.tva_collectee - d.tva_deductible)}</td><td class="num">${euro(d.resultat_ttc)}</td></tr>`;
+    html += `<tr class="ligne-total"><td>RÉSULTAT (${periode})</td><td class="num" style="color:var(--${resHT >= 0 ? 'ok' : 'danger'});">${euro(resHT)}</td><td class="num">${euro(tvaAPayer)}</td><td class="num">${euro(resTTC)}</td></tr>`;
     document.getElementById('g-detail-tbody').innerHTML = html;
 
-    document.getElementById('g-mois-thead').innerHTML = '<tr><th></th>' + NOMS_MOIS_COURTS.map(m => `<th class="num">${m}</th>`).join('') + '<th class="num">Total</th></tr>';
-    const ligneMois = (nom, tab, total, cls) => `<tr class="${cls || ''}"><td>${nom}</td>${tab.map(v => `<td class="num">${euro(v)}</td>`).join('')}<td class="num">${euro(total)}</td></tr>`;
+    // Tableau mois par mois : le mois choisi est mis en évidence, et un clic sur un mois le sélectionne
+    document.getElementById('g-mois-thead').innerHTML = '<tr><th></th>' + NOMS_MOIS_COURTS.map((n, i) =>
+      `<th class="num g-mois-th" data-mois="${i}" style="cursor:pointer; ${m === i ? 'color:var(--accent);' : ''}">${n}</th>`).join('') + '<th class="num">Total</th></tr>';
+    const ligneMois = (nom, tab, total, cls) => `<tr class="${cls || ''}"><td>${nom}</td>${tab.map((x, i) => `<td class="num" style="${m === i ? 'background:rgba(92,138,221,0.12);' : ''}${cls && x < 0 ? 'color:var(--danger);' : ''}">${euro(x)}</td>`).join('')}<td class="num">${euro(total)}</td></tr>`;
+    const margeMois = d.produits.ht.map((x, i) => x !== 0 ? (d.resultat_mensuel_ht[i] / x * 100) : null);
     document.getElementById('g-mois-tbody').innerHTML =
       ligneMois('Produits HT', d.produits.ht, d.produits.total_ht) +
       ligneMois('Charges HT', d.charges_totales.ht, d.charges_totales.total_ht) +
       ligneMois('Résultat HT', d.resultat_mensuel_ht, d.resultat_ht, 'ligne-total') +
+      `<tr><td>Rentabilité</td>${margeMois.map((x, i) => `<td class="num" style="${m === i ? 'background:rgba(92,138,221,0.12);' : ''}">${x === null ? '—' : x.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %'}</td>`).join('')}<td class="num">${d.produits.total_ht ? (d.resultat_ht / d.produits.total_ht * 100).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %' : '—'}</td></tr>` +
       ligneMois('Produits TTC', d.produits.ttc, d.produits.total_ttc) +
       ligneMois('Charges TTC', d.charges_totales.ttc, d.charges_totales.total_ttc) +
       ligneMois('Résultat TTC', d.resultat_mensuel_ttc, d.resultat_ttc, 'ligne-total');
+    document.querySelectorAll('.g-mois-th').forEach(th => th.addEventListener('click', () => {
+      document.getElementById('g-mois').value = th.dataset.mois;
+      afficherCompteResultat();
+    }));
   }
+  document.getElementById('g-mois').addEventListener('change', afficherCompteResultat);
   document.getElementById('g-annee').addEventListener('change', chargerCompteResultat);
   document.getElementById('g-imprimer').addEventListener('click', () => window.print());
 
