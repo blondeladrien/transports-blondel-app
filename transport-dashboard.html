@@ -156,7 +156,7 @@
   body.mode-comptable .btn-delete-row, body.mode-comptable .btn-change-fixe, body.mode-comptable .btn-edit-fixe,
   body.mode-comptable #fixe-ajouter, body.mode-comptable #g-ajouter-charge, body.mode-comptable #g-ajouter-produit,
   body.mode-comptable #dsn-enregistrer, body.mode-comptable .reserve-moderateur, body.mode-comptable #btn-add-tracteur, body.mode-comptable #btn-add-remorque{display:none !important;}
-  body.mode-comptable .km-cell, body.mode-comptable #view-vehicules td, body.mode-comptable #view-cloture td{pointer-events:none;}
+  body.mode-comptable .km-cell, body.mode-comptable #view-vehicules td, body.mode-comptable #view-cloture td, body.mode-comptable #view-ticpe td{pointer-events:none;}
   body.mode-comptable .sal-net, body.mode-comptable #dsn-montant, body.mode-comptable #dsn-date, body.mode-comptable #dsn-note{pointer-events:none; background:transparent; border-color:transparent;}
   .table-compta tr.ligne-pointee td{background:rgba(92,138,221,0.16);}
   .table-compta tbody tr[data-cle]{cursor:pointer;}
@@ -7018,9 +7018,9 @@
     document.body.classList.add('mode-comptable');
     document.getElementById('login-screen').style.display = 'none';
     ouvrirEspace('gestion');
-    // Deux onglets de l'espace Transport sont ouverts au comptable, en lecture seule : Indemnités (onglet « Chauffeur ») et Véhicules
+    // Trois onglets de l'espace Transport sont ouverts au comptable, en lecture seule : Indemnités (onglet « Chauffeur »), Véhicules et TICPE
     const nav = document.querySelector('.nav');
-    [['cloture', 'Indemnités'], ['vehicules', 'Véhicules']].forEach(([vue, nom]) => {
+    [['cloture', 'Indemnités'], ['vehicules', 'Véhicules'], ['ticpe', 'TICPE']].forEach(([vue, nom]) => {
       const btn = document.querySelector(`.nav-item[data-view="${vue}"]`);
       if (!btn) return;
       btn.style.display = '';
