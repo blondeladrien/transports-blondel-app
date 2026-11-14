@@ -500,6 +500,10 @@
         <span class="nav-icon-wrap"><svg viewBox="0 0 24 24"><path d="M5 5h14M5 12h14M5 19h14"/><path d="M3 5h.01M3 12h.01M3 19h.01"/></svg></span>
         Total des charges
       </button>
+      <button class="nav-item" data-view="g-totalprod" data-espace="gestion" style="display:none;">
+        <span class="nav-icon-wrap"><svg viewBox="0 0 24 24"><path d="M5 5h14M5 12h14M5 19h14"/><path d="M3 5h.01M3 12h.01M3 19h.01"/></svg></span>
+        Total des produits
+      </button>
       <button class="nav-item" data-view="g-produits" data-espace="gestion" style="display:none;">
         <span class="nav-icon-wrap"><svg viewBox="0 0 24 24"><path d="M12 3v18M17 7.5c0-1.7-2.2-3-5-3s-5 1.3-5 3 2.2 3 5 3 5 1.3 5 3-2.2 3-5 3-5-1.3-5-3"/></svg></span>
         Produits exceptionnels
@@ -1376,6 +1380,60 @@
             </table>
           </div>
           <div class="placeholder" id="gt-lignes-vide" style="display:none;">Aucune charge sur cette période.</div>
+        </div>
+      </div>
+
+      <div class="view" id="view-g-totalprod">
+        <div class="panel" style="margin-bottom:20px;">
+          <div class="panel-head">
+            <h2 id="gp-titre">Total des produits</h2>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <span style="font-size:12px; color:var(--text-dim);">Période</span>
+              <select id="gp-mois" style="background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:12px; padding:6px 10px; border-radius:7px;">
+                <option value="tous">Toute l'année</option>
+                <option value="0">Janvier</option><option value="1">Février</option><option value="2">Mars</option><option value="3">Avril</option>
+                <option value="4">Mai</option><option value="5">Juin</option><option value="6">Juillet</option><option value="7">Août</option>
+                <option value="8">Septembre</option><option value="9">Octobre</option><option value="10">Novembre</option><option value="11">Décembre</option>
+              </select>
+              <select id="gp-annee" style="background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:12px; padding:6px 10px; border-radius:7px;">
+                <option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option><option value="2028">2028</option>
+              </select>
+            </div>
+          </div>
+          <div style="font-size:12px; color:var(--text-dim); padding:0 18px 12px;">Tous les produits de l'exercice au même endroit, classés en : <b>Ventes de transport</b> (lignes de facturation et factures globales, saisies en HT) et <b>Produits exceptionnels</b> (recettes hors missions). Montants HT sauf indication.</div>
+          <div class="conso-summary" id="gp-kpis"></div>
+        </div>
+        <div class="panel" style="margin-bottom:20px;">
+          <div class="panel-head"><h2>Total par mois</h2></div>
+          <div style="overflow-x:auto;">
+            <table class="table-compta">
+              <thead><tr><th>Mois</th><th class="num">Ventes de transport</th><th class="num">Produits exceptionnels</th><th class="num">Total HT</th><th class="num">TVA collectée</th><th class="num">Total TTC</th></tr></thead>
+              <tbody id="gp-mois-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <h2 id="gp-lignes-titre">Toutes les lignes</h2>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <select id="gp-mois-lignes" style="background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:12px; padding:6px 10px; border-radius:7px;">
+                <option value="tous">Toute l'année</option>
+                <option value="0">Janvier</option><option value="1">Février</option><option value="2">Mars</option><option value="3">Avril</option>
+                <option value="4">Mai</option><option value="5">Juin</option><option value="6">Juillet</option><option value="7">Août</option>
+                <option value="8">Septembre</option><option value="9">Octobre</option><option value="10">Novembre</option><option value="11">Décembre</option>
+              </select>
+              <select id="gp-type" style="background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:12px; padding:6px 10px; border-radius:7px;">
+                <option value="tous">Tous les types</option><option value="Vente">Ventes de transport</option><option value="Exceptionnel">Produits exceptionnels</option>
+              </select>
+            </div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="table-compta">
+              <thead><tr><th>Date</th><th>Type</th><th>Client / libellé</th><th>Détail</th><th class="num">HT</th><th class="num">TVA %</th><th class="num">TTC</th></tr></thead>
+              <tbody id="gp-lignes-tbody"></tbody>
+            </table>
+          </div>
+          <div class="placeholder" id="gp-lignes-vide" style="display:none;">Aucun produit sur cette période.</div>
         </div>
       </div>
 
@@ -2938,6 +2996,7 @@
     'g-fixes': 'Gestion — Charges fixes',
     'g-variables': 'Gestion — Charges variables',
     'g-total': 'Gestion — Total des charges',
+    'g-totalprod': 'Gestion — Total des produits',
     'g-charges': 'Gestion — Charges exceptionnelles',
     'g-produits': 'Gestion — Produits exceptionnels'
   };
@@ -2958,6 +3017,7 @@
       if (key === 'g-produits') chargerProduitsExc();
       if (key === 'g-variables') chargerChargesVariables();
       if (key === 'g-total') chargerTotalCharges();
+      if (key === 'g-totalprod') chargerTotalProduits();
       if (key === 'g-salaires') chargerSalaires();
       if (key === 'g-fixes') chargerChargesFixes();
       if (key === 'clients') chargerClientsReels();
@@ -6380,6 +6440,102 @@
   document.getElementById('gt-mois').addEventListener('change', afficherTotalCharges);
   document.getElementById('gt-mois-lignes').addEventListener('change', (e) => { document.getElementById('gt-mois').value = e.target.value; afficherTotalCharges(); });
   document.getElementById('gt-type').addEventListener('change', afficherTotalCharges);
+
+
+  // ============================================================
+  // GESTION : TOTAL DES PRODUITS (ventes de transport + produits exceptionnels)
+  // ============================================================
+  document.getElementById('gp-annee').value = String(new Date().getFullYear());
+  const TYPES_PRODUITS = {
+    Vente: { nom: 'Vente de transport', couleur: '#4caf7d' },
+    Globale: { nom: 'Facture globale', couleur: '#5c8add' },
+    Exceptionnel: { nom: 'Exceptionnel', couleur: '#e0a030' }
+  };
+  let totalProduitsDonnees = null;
+
+  async function chargerTotalProduits() {
+    const annee = document.getElementById('gp-annee').value;
+    const [d, facturation, groupees, exceptionnels] = await Promise.all([
+      appelApi(`/gestion/compte-resultat?annee=${annee}`),
+      appelApi('/facturation'),
+      appelApi('/facturation/groupees'),
+      appelApi(`/gestion/produits-exceptionnels?annee=${annee}`)
+    ]);
+    if (!d) return;
+    const r2 = (n) => Math.round(n * 100) / 100;
+    const lignes = [];
+    // Ventes : montants saisis en HT ; TVA = HT × taux, arrondie au centime
+    const vente = (date, type, client, detail, montantHt, taux) => {
+      const htv = r2(montantHt), tva = r2(htv * taux / 100);
+      lignes.push({ date, type, client, detail, ht: htv, taux, ttc: r2(htv + tva) });
+    };
+    (facturation || []).forEach(l => {
+      const date = l.date_facturation || l.date_mission;
+      if (!date || !date.startsWith(annee + '-') || l.facture_groupee_id || l.montant_ht == null) return;
+      vente(date, 'Vente', l.client, [l.numero_facture ? 'Facture ' + l.numero_facture : null, 'mission du ' + new Date(l.date_mission + 'T00:00:00').toLocaleDateString('fr-FR'), l.chauffeur_nom].filter(Boolean).join(' · '), l.montant_ht, l.taux_tva);
+    });
+    (groupees || []).filter(f => (f.mois || '').startsWith(annee + '-')).forEach(f => {
+      vente(f.mois + '-01', 'Globale', f.clients || 'Facture globale', [f.numero_facture ? 'Facture ' + f.numero_facture : null, f.nb_lignes ? f.nb_lignes + ' ligne(s) regroupée(s)' : null].filter(Boolean).join(' · ') || '—', f.montant_ht, f.taux_tva);
+    });
+    (exceptionnels || []).forEach(x => {
+      const ttc = r2(x.montant_ttc), htv = r2(ttc / (1 + x.taux_tva / 100));
+      lignes.push({ date: x.date_produit, type: 'Exceptionnel', client: x.libelle, detail: 'Produit exceptionnel', ht: htv, taux: x.taux_tva, ttc });
+    });
+    totalProduitsDonnees = { d, lignes, annee, r2 };
+    afficherTotalProduits();
+  }
+
+  function afficherTotalProduits() {
+    if (!totalProduitsDonnees) return;
+    const { d, lignes, annee, r2 } = totalProduitsDonnees;
+    const choix = document.getElementById('gp-mois').value;
+    document.getElementById('gp-mois-lignes').value = choix;
+    const m = choix === 'tous' ? null : parseInt(choix, 10);
+    const periode = m === null ? `exercice ${annee}` : `${NOMS_MOIS_LONGS[m]} ${annee}`;
+    document.getElementById('gp-titre').textContent = `Total des produits — ${periode}`;
+    const v = (b, k) => m === null ? b['total_' + k] : b[k][m];
+
+    const ventes = d.ventes, exc = d.produits_exceptionnels, tot = d.produits;
+    const totHt = v(tot, 'ht');
+    const part = (x) => totHt ? (x / totHt * 100).toLocaleString('fr-FR', { maximumFractionDigits: 0 }) + ' % du total' : '—';
+    document.getElementById('gp-kpis').innerHTML =
+      `<div class="conso-card"><div class="stat-label">Total des produits HT</div><div class="stat-value info">${euro(totHt)}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">${euro(v(tot, 'ttc'))} TTC</div></div>` +
+      `<div class="conso-card"><div class="stat-label">Ventes de transport</div><div class="stat-value">${euro(v(ventes, 'ht'))}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">${part(v(ventes, 'ht'))}</div></div>` +
+      `<div class="conso-card"><div class="stat-label">Produits exceptionnels</div><div class="stat-value">${euro(v(exc, 'ht'))}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">${part(v(exc, 'ht'))}</div></div>` +
+      `<div class="conso-card"><div class="stat-label">TVA collectée</div><div class="stat-value">${euro(v(tot, 'tva'))}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">sur la période</div></div>`;
+
+    let corps = '';
+    for (let i = 0; i < 12; i++) {
+      corps += `<tr class="gp-ligne-mois" data-mois="${i}" style="cursor:pointer; ${m === i ? 'background:rgba(92,138,221,0.12);' : ''}"><td style="font-family:inherit; text-align:left;">${NOMS_MOIS_LONGS[i].charAt(0).toUpperCase() + NOMS_MOIS_LONGS[i].slice(1)}</td>` +
+        `<td class="num">${euro(ventes.ht[i])}</td><td class="num">${euro(exc.ht[i])}</td><td class="num"><b>${euro(tot.ht[i])}</b></td><td class="num">${euro(tot.tva[i])}</td><td class="num">${euro(tot.ttc[i])}</td></tr>`;
+    }
+    corps += `<tr class="ligne-total"><td>Total ${annee}</td><td class="num">${euro(ventes.total_ht)}</td><td class="num">${euro(exc.total_ht)}</td><td class="num">${euro(tot.total_ht)}</td><td class="num">${euro(tot.total_tva)}</td><td class="num">${euro(tot.total_ttc)}</td></tr>`;
+    document.getElementById('gp-mois-tbody').innerHTML = corps;
+    document.querySelectorAll('.gp-ligne-mois').forEach(tr => tr.addEventListener('click', () => {
+      document.getElementById('gp-mois').value = tr.dataset.mois; afficherTotalProduits();
+    }));
+
+    const filtre = document.getElementById('gp-type').value;
+    const prefixe = m === null ? `${annee}-` : `${annee}-${String(m + 1).padStart(2, '0')}`;
+    const retenues = lignes.filter(l => l.date.startsWith(prefixe) && (filtre === 'tous' || (filtre === 'Vente' ? l.type !== 'Exceptionnel' : l.type === 'Exceptionnel')))
+      .sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
+    let sHt = 0, sTtc = 0;
+    const html = retenues.map(l => {
+      sHt += l.ht; sTtc += l.ttc;
+      const t = TYPES_PRODUITS[l.type];
+      return `<tr><td class="mono" style="text-align:left;">${new Date(l.date + 'T00:00:00').toLocaleDateString('fr-FR')}</td>` +
+        `<td style="font-family:inherit; text-align:left;"><span style="display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; background:${t.couleur}26; color:${t.couleur}; border:1px solid ${t.couleur}66;">${t.nom}</span></td>` +
+        `<td style="font-family:inherit; text-align:left;">${echapper(l.client)}</td><td style="font-family:inherit; text-align:left;">${echapper(l.detail)}</td>` +
+        `<td class="num">${euro(l.ht)}</td><td class="num">${String(l.taux).replace('.', ',')} %</td><td class="num">${euro(l.ttc)}</td></tr>`;
+    }).join('');
+    document.getElementById('gp-lignes-titre').textContent = `Toutes les lignes — ${periode} (${retenues.length})`;
+    document.getElementById('gp-lignes-vide').style.display = retenues.length ? 'none' : 'block';
+    document.getElementById('gp-lignes-tbody').innerHTML = html + (retenues.length ? `<tr class="ligne-total"><td colspan="4">Total</td><td class="num">${euro(r2(sHt))}</td><td></td><td class="num">${euro(r2(sTtc))}</td></tr>` : '');
+  }
+  document.getElementById('gp-annee').addEventListener('change', chargerTotalProduits);
+  document.getElementById('gp-mois').addEventListener('change', afficherTotalProduits);
+  document.getElementById('gp-mois-lignes').addEventListener('change', (e) => { document.getElementById('gp-mois').value = e.target.value; afficherTotalProduits(); });
+  document.getElementById('gp-type').addEventListener('change', afficherTotalProduits);
 
 </script>
 
