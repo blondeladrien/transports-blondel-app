@@ -488,6 +488,10 @@
         <span class="nav-icon-wrap"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.5-5.8"/><path d="M4 4v4.5h4.5"/><path d="M12 8v4l2.5 2"/></svg></span>
         Charges fixes
       </button>
+      <button class="nav-item" data-view="g-variables" data-espace="gestion" style="display:none;">
+        <span class="nav-icon-wrap"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>
+        Charges variables
+      </button>
       <button class="nav-item" data-view="g-charges" data-espace="gestion" style="display:none;">
         <span class="nav-icon-wrap"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h4"/></svg></span>
         Charges exceptionnelles
@@ -1268,6 +1272,34 @@
             </table>
           </div>
           <div class="placeholder" id="fixe-vide" style="display:none;">Aucune charge fixe enregistrée.</div>
+        </div>
+      </div>
+
+      <div class="view" id="view-g-variables">
+        <div class="panel" style="margin-bottom:20px;">
+          <div class="panel-head">
+            <h2 id="gv-titre">Charges variables</h2>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <select id="gv-annee" style="background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:12px; padding:6px 10px; border-radius:7px;">
+                <option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option><option value="2028">2028</option>
+              </select>
+            </div>
+          </div>
+          <div style="font-size:12px; color:var(--text-dim); padding:0 18px 12px;">Charges qui varient avec l'activité et sont reprises automatiquement de l'espace Transport : carburant (pleins enregistrés) et achats professionnels des chauffeurs. Montants HT.</div>
+          <div class="conso-summary" id="gv-kpis"></div>
+        </div>
+        <div class="panel" style="margin-bottom:20px;">
+          <div class="panel-head"><h2>Évolution mois par mois (HT)</h2></div>
+          <div id="gv-graphique" style="padding:8px 18px 18px;"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2>Détail par mois</h2></div>
+          <div style="overflow-x:auto;">
+            <table class="table-compta">
+              <thead id="gv-thead"></thead>
+              <tbody id="gv-tbody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -2828,6 +2860,7 @@
     'g-resultat': 'Gestion — Compte de résultat',
     'g-salaires': 'Gestion — Salaires et DSN',
     'g-fixes': 'Gestion — Charges fixes',
+    'g-variables': 'Gestion — Charges variables',
     'g-charges': 'Gestion — Charges exceptionnelles',
     'g-produits': 'Gestion — Produits exceptionnels'
   };
@@ -2846,6 +2879,7 @@
       if (key === 'g-resultat') chargerCompteResultat();
       if (key === 'g-charges') chargerChargesGestion();
       if (key === 'g-produits') chargerProduitsExc();
+      if (key === 'g-variables') chargerChargesVariables();
       if (key === 'g-salaires') chargerSalaires();
       if (key === 'g-fixes') chargerChargesFixes();
       if (key === 'clients') chargerClientsReels();
@@ -6038,6 +6072,75 @@
     });
     if (rep) { fermerProduit(); chargerProduitsExc(); }
   });
+
+
+  // ============================================================
+  // GESTION : CHARGES VARIABLES (reprises de l'espace Transport)
+  // ============================================================
+  document.getElementById('gv-annee').value = String(new Date().getFullYear());
+  const POSTES_VARIABLES = [
+    { cle: 'Carburant (pleins enregistrés)', nom: 'Carburant', couleur: 'var(--info, #5c8add)' },
+    { cle: 'Achats professionnels des chauffeurs', nom: 'Achats pro des chauffeurs', couleur: 'var(--warn, #e0a030)' }
+  ];
+
+  async function chargerChargesVariables() {
+    const annee = document.getElementById('gv-annee').value;
+    document.getElementById('gv-titre').textContent = `Charges variables — exercice ${annee}`;
+    const d = await appelApi(`/gestion/compte-resultat?annee=${annee}`);
+    if (!d) return;
+    const zero = { ht: Array(12).fill(0), tva: Array(12).fill(0), ttc: Array(12).fill(0), total_ht: 0, total_tva: 0, total_ttc: 0 };
+    const postes = POSTES_VARIABLES.map(p => ({ ...p, b: d.charges[p.cle] || zero }));
+    const r2 = (n) => Math.round(n * 100) / 100;
+    const totalMois = Array.from({ length: 12 }, (_, i) => r2(postes.reduce((s, p) => s + p.b.ht[i], 0)));
+    const total = r2(postes.reduce((s, p) => s + p.b.total_ht, 0));
+    const ca = d.produits.total_ht;
+    const nbMoisActifs = totalMois.filter(x => x > 0).length;
+    const moyenne = nbMoisActifs ? r2(total / nbMoisActifs) : 0;
+    const part = ca ? (total / ca * 100).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %' : '—';
+
+    document.getElementById('gv-kpis').innerHTML =
+      `<div class="conso-card"><div class="stat-label">Charges variables HT</div><div class="stat-value warn">${euro(total)}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">${euro(r2(postes.reduce((s, p) => s + p.b.total_ttc, 0)))} TTC</div></div>` +
+      postes.map(p => `<div class="conso-card"><div class="stat-label">${echapper(p.nom)}</div><div class="stat-value">${euro(p.b.total_ht)}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">${total ? (p.b.total_ht / total * 100).toLocaleString('fr-FR', { maximumFractionDigits: 0 }) + ' % des charges variables' : '—'}</div></div>`).join('') +
+      `<div class="conso-card"><div class="stat-label">Moyenne par mois</div><div class="stat-value">${euro(moyenne)}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">sur ${nbMoisActifs} mois avec activité</div></div>` +
+      `<div class="conso-card"><div class="stat-label">Part du chiffre d'affaires</div><div class="stat-value">${part}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">charges variables ÷ CA HT</div></div>`;
+
+    // Graphique en barres empilées (SVG)
+    const W = 760, H = 240, bas = 28, haut = 14, gauche = 52, droite = 8;
+    const maxi = Math.max(...totalMois, 1);
+    const pas = Math.pow(10, Math.floor(Math.log10(maxi)));
+    const sommet = Math.ceil(maxi / pas) * pas;
+    const hauteurUtile = H - bas - haut, largeurUtile = W - gauche - droite, largeurCol = largeurUtile / 12;
+    const y = (val) => haut + hauteurUtile - (val / sommet) * hauteurUtile;
+    let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%; height:auto; max-height:300px;" role="img" aria-label="Charges variables par mois">`;
+    for (let k = 0; k <= 4; k++) {
+      const val = sommet * k / 4, yy = y(val);
+      svg += `<line x1="${gauche}" x2="${W - droite}" y1="${yy}" y2="${yy}" stroke="currentColor" stroke-opacity="0.12"/>` +
+             `<text x="${gauche - 6}" y="${yy + 4}" text-anchor="end" font-size="10" fill="currentColor" fill-opacity="0.6">${Math.round(val).toLocaleString('fr-FR')} €</text>`;
+    }
+    for (let i = 0; i < 12; i++) {
+      const x = gauche + i * largeurCol + largeurCol * 0.18, w = largeurCol * 0.64;
+      let cumul = 0;
+      postes.forEach(p => {
+        const val = p.b.ht[i];
+        if (val > 0) {
+          svg += `<rect x="${x}" y="${y(cumul + val)}" width="${w}" height="${y(cumul) - y(cumul + val)}" fill="${p.couleur}" rx="2"><title>${NOMS_MOIS_COURTS[i]} — ${p.nom} : ${euro(val)} HT</title></rect>`;
+          cumul += val;
+        }
+      });
+      svg += `<text x="${x + w / 2}" y="${H - 10}" text-anchor="middle" font-size="10" fill="currentColor" fill-opacity="0.7">${NOMS_MOIS_COURTS[i]}</text>`;
+    }
+    svg += '</svg>';
+    const legende = postes.map(p => `<span style="display:inline-flex; align-items:center; gap:6px; margin-right:16px; font-size:12px; color:var(--text-dim);"><span style="width:10px; height:10px; border-radius:2px; background:${p.couleur}; display:inline-block;"></span>${echapper(p.nom)}</span>`).join('');
+    document.getElementById('gv-graphique').innerHTML = `<div style="margin-bottom:8px;">${legende}</div>` + svg;
+
+    document.getElementById('gv-thead').innerHTML = '<tr><th></th>' + NOMS_MOIS_COURTS.map(n => `<th class="num">${n}</th>`).join('') + '<th class="num">Total</th></tr>';
+    const lig = (nom, tab, tot, cls) => `<tr class="${cls || ''}"><td>${echapper(nom)}</td>${tab.map(x => `<td class="num">${euro(x)}</td>`).join('')}<td class="num">${euro(tot)}</td></tr>`;
+    document.getElementById('gv-tbody').innerHTML =
+      postes.map(p => lig(p.nom + ' HT', p.b.ht, p.b.total_ht)).join('') +
+      lig('Total charges variables HT', totalMois, total, 'ligne-total') +
+      lig('Total charges variables TTC', Array.from({ length: 12 }, (_, i) => r2(postes.reduce((s, p) => s + p.b.ttc[i], 0))), r2(postes.reduce((s, p) => s + p.b.total_ttc, 0)));
+  }
+  document.getElementById('gv-annee').addEventListener('change', chargerChargesVariables);
 
 </script>
 
