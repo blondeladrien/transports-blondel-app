@@ -149,6 +149,14 @@
   .gb-barre{position:absolute; left:0; top:0; height:18px; border-radius:0 4px 4px 0;}
   .gb-val{position:absolute; top:0; line-height:18px; font-size:12px; color:var(--text); font-weight:600; white-space:nowrap; font-variant-numeric:tabular-nums;}
   .graph-vide{padding:26px 10px; text-align:center; color:var(--text-dim); font-size:13px;}
+  /* Mode comptable : lecture seule, tout ce qui modifie quelque chose est masqué (le serveur refuse de toute façon les écritures) */
+  .btn-deconnexion-comptable{display:none;}
+  body.mode-comptable .btn-deconnexion-comptable{display:block;}
+  body.mode-comptable #btn-changer-espace, body.mode-comptable #btn-rafraichir-page,
+  body.mode-comptable .btn-delete-row, body.mode-comptable .btn-change-fixe, body.mode-comptable .btn-edit-fixe,
+  body.mode-comptable #fixe-ajouter, body.mode-comptable #g-ajouter-charge, body.mode-comptable #g-ajouter-produit,
+  body.mode-comptable #dsn-enregistrer, body.mode-comptable .reserve-moderateur{display:none !important;}
+  body.mode-comptable .sal-net, body.mode-comptable #dsn-montant, body.mode-comptable #dsn-date, body.mode-comptable #dsn-note{pointer-events:none; background:transparent; border-color:transparent;}
   .table-compta tr.ligne-pointee td{background:rgba(92,138,221,0.16);}
   .table-compta tbody tr[data-cle]{cursor:pointer;}
   .table-compta tbody tr[data-cle]:hover td{background:rgba(255,255,255,0.04);}
@@ -537,11 +545,16 @@
         <span class="nav-icon-wrap"><svg viewBox="0 0 24 24"><path d="M5 5h14M5 12h14M5 19h14"/><path d="M3 5h.01M3 12h.01M3 19h.01"/></svg></span>
         Total des produits
       </button>
+      <button class="nav-item reserve-moderateur" data-view="g-comptable" data-espace="gestion" style="display:none;">
+        <span class="nav-icon-wrap"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/></svg></span>
+        Accès comptable
+      </button>
       <button class="nav-item" data-view="g-produits" data-espace="gestion" style="display:none;">
         <span class="nav-icon-wrap"><svg viewBox="0 0 24 24"><path d="M12 3v18M17 7.5c0-1.7-2.2-3-5-3s-5 1.3-5 3 2.2 3 5 3 5 1.3 5 3-2.2 3-5 3-5-1.3-5-3"/></svg></span>
         Produits exceptionnels
       </button>
     </div>
+    <button class="btn-ghost btn-deconnexion-comptable" id="btn-deconnexion-comptable" style="margin:10px 12px 0; width:calc(100% - 24px); font-size:12px;">Se déconnecter</button>
     <button class="btn-ghost" id="btn-changer-espace" style="margin:10px 12px 0; width:calc(100% - 24px); font-size:12px;">⇄ Changer d'espace</button>
     <div class="sidebar-foot" id="sidebar-compteurs">0 chauffeur actif · 0 véhicule</div>
   </div>
@@ -1488,6 +1501,27 @@
           <div class="conso-summary" id="gg-kpis"></div>
         </div>
         <div class="graph-grille" id="gg-grille"></div>
+      </div>
+
+      <div class="view" id="view-g-comptable">
+        <div class="panel" style="max-width:640px;">
+          <div class="panel-head"><h2>Accès comptable</h2></div>
+          <div style="font-size:13px; color:var(--text-dim); padding:0 18px 14px; line-height:1.5;">Donnez à votre comptable un accès à l'espace Gestion en <b>lecture seule</b> : il voit le compte de résultat, les charges, les produits, les salaires et les graphiques, mais ne peut rien modifier ni voir l'espace Transport.</div>
+          <div id="cpt-etat" style="padding:0 18px 12px; font-size:13px;"></div>
+          <div style="padding:0 18px 18px; display:flex; flex-direction:column; gap:12px;">
+            <div class="field" style="margin:0;"><label>Identifiant du comptable</label><input type="text" id="cpt-identifiant" placeholder="ex. cabinet-dupont" autocomplete="off"></div>
+            <div class="field" style="margin:0;"><label id="cpt-label-mdp">Mot de passe (8 caractères minimum)</label><input type="text" id="cpt-mdp" placeholder="" autocomplete="off"></div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="btn" id="cpt-enregistrer">Enregistrer l'accès</button>
+              <button class="btn-ghost" id="cpt-supprimer" style="display:none;">Supprimer l'accès</button>
+            </div>
+            <div style="font-size:12px; color:var(--text-dim); border-top:1px solid var(--line); padding-top:12px; line-height:1.5;">
+              Adresse à donner au comptable :<br>
+              <span class="mono" id="cpt-lien" style="color:var(--text); word-break:break-all;"></span>
+              <button class="btn-ghost" id="cpt-copier" style="font-size:12px; padding:4px 10px; margin-left:8px;">Copier</button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="view" id="view-g-produits">
@@ -2913,6 +2947,7 @@
     `;
   }
 
+  let modeComptable = false;
   async function appelApi(chemin, options = {}) {
     if (!apiDisponible) return null;
     try {
@@ -2926,6 +2961,11 @@
       });
       const texte = await reponse.text();
       const donnees = texte ? JSON.parse(texte) : {};
+      if (reponse.status === 401 && modeComptable) {
+        try { sessionStorage.removeItem('jeton_comptable'); } catch (e) { /* rien */ }
+        window.location.replace('comptable.html?expire=1');
+        return null;
+      }
       if (!reponse.ok) {
         afficherErreurApi(donnees.erreur || `Le serveur a refusé l'opération (code ${reponse.status}).`);
         return null;
@@ -3049,6 +3089,7 @@
     'g-fixes': 'Gestion — Charges fixes',
     'g-variables': 'Gestion — Charges variables',
     'g-total': 'Gestion — Total des charges',
+    'g-comptable': 'Gestion — Accès comptable',
     'g-graphiques': 'Gestion — Graphiques',
     'g-totalprod': 'Gestion — Total des produits',
     'g-charges': 'Gestion — Charges exceptionnelles',
@@ -3071,6 +3112,7 @@
       if (key === 'g-produits') chargerProduitsExc();
       if (key === 'g-variables') chargerChargesVariables();
       if (key === 'g-total') chargerTotalCharges();
+      if (key === 'g-comptable') chargerAccesComptable();
       if (key === 'g-graphiques') chargerGraphiques();
       if (key === 'g-totalprod') chargerTotalProduits();
       if (key === 'g-salaires') chargerSalaires();
@@ -6929,6 +6971,57 @@
     }));
   }
   document.getElementById('gg-annee').addEventListener('change', chargerGraphiques);
+
+
+  // ============================================================
+  // ACCÈS COMPTABLE : gestion du compte (modérateur) + mode lecture seule (comptable)
+  // ============================================================
+  const lienPageComptable = () => new URL('comptable.html', window.location.href).href;
+  async function chargerAccesComptable() {
+    document.getElementById('cpt-lien').textContent = lienPageComptable();
+    const a = await appelApi('/gestion/acces-comptable');
+    if (!a) return;
+    document.getElementById('cpt-etat').innerHTML = a.actif
+      ? `<span style="color:var(--ok);">● Accès actif</span> — identifiant : <b>${echapper(a.identifiant)}</b>`
+      : `<span style="color:var(--text-dim);">○ Aucun accès comptable pour l'instant</span>`;
+    document.getElementById('cpt-identifiant').value = a.actif ? a.identifiant : '';
+    document.getElementById('cpt-mdp').value = '';
+    document.getElementById('cpt-mdp').placeholder = a.actif ? 'Laisser vide pour ne pas le changer' : '';
+    document.getElementById('cpt-supprimer').style.display = a.actif ? '' : 'none';
+  }
+  document.getElementById('cpt-enregistrer').addEventListener('click', async () => {
+    const identifiant = document.getElementById('cpt-identifiant').value.trim();
+    const mot_de_passe = document.getElementById('cpt-mdp').value;
+    const rep = await appelApi('/gestion/acces-comptable', { method: 'PUT', body: JSON.stringify({ identifiant, mot_de_passe }) });
+    if (rep) chargerAccesComptable();
+  });
+  document.getElementById('cpt-supprimer').addEventListener('click', () => {
+    showConfirm('Supprimer l\'accès du comptable ? Il sera déconnecté immédiatement.', async () => {
+      await appelApi('/gestion/acces-comptable', { method: 'DELETE' });
+      chargerAccesComptable();
+    });
+  });
+  document.getElementById('cpt-copier').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(lienPageComptable()); document.getElementById('cpt-copier').textContent = 'Copié ✓'; setTimeout(() => { document.getElementById('cpt-copier').textContent = 'Copier'; }, 1500); } catch (e) { /* copie impossible : l'adresse reste affichée */ }
+  });
+
+  // Mode comptable : on arrive depuis comptable.html avec un jeton en session, directement dans la Gestion, en lecture seule.
+  (function demarrerModeComptable() {
+    if (new URLSearchParams(window.location.search).get('acces') !== 'comptable') return;
+    let jeton = null;
+    try { jeton = sessionStorage.getItem('jeton_comptable'); } catch (e) { /* stockage indisponible */ }
+    if (!jeton) { window.location.replace('comptable.html'); return; }
+    authToken = jeton; apiDisponible = true; modeComptable = true;
+    document.body.classList.add('mode-comptable');
+    document.getElementById('login-screen').style.display = 'none';
+    ouvrirEspace('gestion');
+    document.querySelector('.brand-sub').textContent = 'Espace comptable — Transports A.Blondel';
+    document.addEventListener('focusin', (e) => { if (e.target.matches && e.target.matches('.sal-net, #dsn-montant, #dsn-date, #dsn-note')) e.target.blur(); });
+    document.getElementById('btn-deconnexion-comptable').addEventListener('click', () => {
+      try { sessionStorage.removeItem('jeton_comptable'); } catch (e) { /* rien */ }
+      window.location.href = 'comptable.html';
+    });
+  })();
 
 </script>
 
