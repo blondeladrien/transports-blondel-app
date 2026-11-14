@@ -87,6 +87,21 @@
   .login-error{color:var(--danger); font-size:13px; margin-top:12px; text-align:center; display:none;}
   .login-note{font-size:12px; color:var(--text-dim); text-align:center; margin-top:20px;}
 
+  #espace-screen{display:none; align-items:center; justify-content:center; height:100vh; width:100%;}
+  #espace-screen.active{display:flex;}
+  .espace-card{width:640px; max-width:92vw; background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:36px 32px; box-shadow:var(--shadow-lg); text-align:center;}
+  .espace-choix{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:24px;}
+  @media (max-width:560px){ .espace-choix{grid-template-columns:1fr;} }
+  .espace-btn{background:var(--panel-2); border:1px solid var(--line); border-radius:14px; padding:26px 16px; cursor:pointer; color:var(--text); font-family:inherit; transition:border-color .15s ease, transform .15s ease;}
+  .espace-btn:hover{border-color:var(--accent); transform:translateY(-2px);}
+  .espace-btn .espace-titre{font-size:17px; font-weight:600; margin-bottom:6px;}
+  .espace-btn .espace-desc{font-size:12.5px; color:var(--text-dim); line-height:1.4;}
+  .table-compta td.num, .table-compta th.num{text-align:right; font-family:'IBM Plex Mono', monospace; white-space:nowrap;}
+  .table-compta tr.ligne-total td{font-weight:600; border-top:1px solid var(--line);}
+  .table-compta tr.ligne-section td{font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-dim); padding-top:16px;}
+  .input-montant{width:92px; text-align:right; background:var(--panel-2); border:1px solid var(--line); color:var(--text); border-radius:6px; padding:4px 6px; font-family:'IBM Plex Mono', monospace;}
+  .select-tva{background:var(--panel-2); border:1px solid var(--line); color:var(--text); border-radius:6px; padding:4px 4px; font-family:inherit;}
+  @media print{ .sidebar,.topbar{display:none !important;} html,body{height:auto; overflow:visible;} .main{overflow:visible;} #g-imprimer{display:none;} }
   #app-shell{display:none; height:100vh; width:100%;}
   #app-shell.active{display:flex;}
 
@@ -379,6 +394,23 @@
     </div>
   </div>
 
+  <div id="espace-screen">
+    <div class="espace-card">
+      <div class="login-brand-name">Transports A.Blondel</div>
+      <div class="login-brand-sub">Où souhaitez-vous aller ?</div>
+      <div class="espace-choix">
+        <button class="espace-btn" data-espace-choix="transport">
+          <div class="espace-titre">Transport</div>
+          <div class="espace-desc">Chauffeurs, plannings, missions, véhicules, carburant, facturation</div>
+        </button>
+        <button class="espace-btn" data-espace-choix="gestion">
+          <div class="espace-titre">Gestion</div>
+          <div class="espace-desc">Compte de résultat de l'exercice, charges, TVA</div>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div id="app-shell">
   <div class="sidebar">
     <div class="brand">
@@ -444,7 +476,16 @@
         <span class="nav-icon-wrap"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 13a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V19a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></span>
         Réglages
       </button>
+      <button class="nav-item" data-view="g-resultat" data-espace="gestion" style="display:none;">
+        <span class="nav-icon-wrap"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg></span>
+        Compte de résultat
+      </button>
+      <button class="nav-item" data-view="g-charges" data-espace="gestion" style="display:none;">
+        <span class="nav-icon-wrap"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h4"/></svg></span>
+        Charges et TVA
+      </button>
     </div>
+    <button class="btn-ghost" id="btn-changer-espace" style="margin:10px 12px 0; width:calc(100% - 24px); font-size:12px;">⇄ Changer d'espace</button>
     <div class="sidebar-foot" id="sidebar-compteurs">0 chauffeur actif · 0 véhicule</div>
   </div>
 
@@ -1022,6 +1063,8 @@
                 <th>N° de facture</th>
                 <th>Date de facturation</th>
                 <th>Note</th>
+                <th>Montant TTC (€)</th>
+                <th>TVA</th>
                 <th></th>
               </tr>
             </thead>
@@ -1098,6 +1141,73 @@
             </table>
           </div>
           <div class="placeholder" id="client-bilan-vide">Sélectionnez un client pour voir ce qui a été réalisé pour lui.</div>
+        </div>
+      </div>
+
+      <div class="view" id="view-g-resultat">
+        <div class="panel" style="margin-bottom:20px;">
+          <div class="panel-head">
+            <h2 id="g-titre">Compte de résultat — exercice 2026</h2>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <span style="font-size:12px; color:var(--text-dim);">Exercice (1er janv. → 31 déc.)</span>
+              <select id="g-annee" style="background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:12px; padding:6px 10px; border-radius:7px;">
+                <option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option><option value="2028">2028</option>
+              </select>
+              <button class="btn-ghost" id="g-imprimer" style="font-size:12px; padding:6px 10px;">Imprimer</button>
+            </div>
+          </div>
+          <div id="g-alerte" class="placeholder" style="display:none; padding:12px; color:var(--warn);"></div>
+          <div class="conso-summary" id="g-kpis"></div>
+        </div>
+        <div class="panel" style="margin-bottom:20px;">
+          <div class="panel-head"><h2>Détail de l'exercice</h2></div>
+          <div style="overflow-x:auto;">
+            <table class="table-compta">
+              <thead><tr><th>Poste</th><th class="num">Montant HT</th><th class="num">TVA</th><th class="num">Montant TTC</th></tr></thead>
+              <tbody id="g-detail-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2>Mois par mois</h2></div>
+          <div style="overflow-x:auto;">
+            <table class="table-compta">
+              <thead id="g-mois-thead"></thead>
+              <tbody id="g-mois-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="view" id="view-g-charges">
+        <div class="panel" style="margin-bottom:20px;">
+          <div class="panel-head"><h2>TVA des charges reprises automatiquement</h2></div>
+          <div style="display:flex; flex-wrap:wrap; gap:18px; align-items:flex-end; padding:16px 18px 6px;">
+            <div class="field" style="margin:0;"><label>Carburant (pleins) — taux de TVA %</label>
+              <input type="number" id="g-tva-carburant" step="0.1" min="0" max="100" style="width:120px;"></div>
+            <div class="field" style="margin:0;"><label>Achats pro des chauffeurs — taux de TVA %</label>
+              <input type="number" id="g-tva-achats" step="0.1" min="0" max="100" style="width:120px;"></div>
+            <button class="btn" id="g-enregistrer-tva">Enregistrer</button>
+          </div>
+          <div style="font-size:12px; color:var(--text-dim); padding:6px 18px 14px;">Les montants saisis dans l'app (pleins, achats pro) sont traités comme TTC. Les indemnités de route n'ont pas de TVA. Les ventes ont leur taux sur chaque ligne de l'onglet Facturation (espace Transport).</div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <h2 id="g-charges-titre">Charges saisies</h2>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <select id="g-charges-annee" style="background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:12px; padding:6px 10px; border-radius:7px;">
+                <option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option><option value="2028">2028</option>
+              </select>
+              <button class="btn" id="g-ajouter-charge">+ Ajouter une charge</button>
+            </div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="table-compta">
+              <thead><tr><th>Date</th><th>Libellé</th><th>Catégorie</th><th class="num">TTC</th><th class="num">TVA %</th><th class="num">HT</th><th class="num">TVA</th><th></th></tr></thead>
+              <tbody id="g-charges-tbody"></tbody>
+            </table>
+          </div>
+          <div class="placeholder" id="g-charges-vide" style="display:none;">Aucune charge saisie pour cet exercice.</div>
         </div>
       </div>
 
@@ -1219,6 +1329,33 @@
       <div class="modal-foot">
         <button class="btn-ghost" id="modal-mission-close-2">Annuler</button>
         <button class="btn" id="btn-create-mission">Créer la mission</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-add-charge-overlay">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <div class="modal-head-name">Ajouter une charge</div>
+          <div class="modal-head-sub">Saisissez le montant TTC : le HT et la TVA sont calculés au centime</div>
+        </div>
+        <button class="modal-close" id="modal-add-charge-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="field"><label>Date</label><input type="date" id="charge-date"></div>
+        <div class="field"><label>Libellé</label><input type="text" id="charge-libelle" placeholder="ex. Assurance flotte octobre"></div>
+        <div class="field"><label>Catégorie</label><select id="charge-categorie"></select></div>
+        <div class="field-row">
+          <div class="field"><label>Montant TTC (€)</label><input type="text" inputmode="decimal" id="charge-montant" placeholder="ex. 1 250,50"></div>
+          <div class="field"><label>Taux de TVA</label>
+            <select id="charge-taux"><option value="20">20 %</option><option value="10">10 %</option><option value="5.5">5,5 %</option><option value="2.1">2,1 %</option><option value="0">0 % (pas de TVA)</option></select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn-ghost" id="modal-add-charge-close-2">Annuler</button>
+        <button class="btn" id="btn-create-charge">Ajouter</button>
       </div>
     </div>
   </div>
@@ -1926,7 +2063,7 @@
         apiDisponible = true;
         errorEl.style.display = 'none';
         document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('app-shell').classList.add('active');
+        afficherChoixEspace();
         await chargerDonneesInitiales();
         btnLogin.disabled = false;
         btnLogin.textContent = texteOriginal;
@@ -1942,7 +2079,7 @@
     if (identifiant === 'admin' && motdepasse === 'blondel2026') {
       errorEl.style.display = 'none';
       document.getElementById('login-screen').style.display = 'none';
-      document.getElementById('app-shell').classList.add('active');
+      afficherChoixEspace();
     } else {
       errorEl.textContent = 'Identifiant ou mot de passe incorrect.';
       errorEl.style.display = 'block';
@@ -2464,7 +2601,9 @@
     administratif: 'Administratif',
     reglages: 'Réglages',
     facturation: 'Facturation',
-    clients: 'Clients'
+    clients: 'Clients',
+    'g-resultat': 'Gestion — Compte de résultat',
+    'g-charges': 'Gestion — Charges et TVA'
   };
   items.forEach(item => {
     item.addEventListener('click', () => {
@@ -2478,6 +2617,8 @@
       if (key === 'achats-exceptionnels') updateAchatsProTotalMois();
       if (key === 'ticpe') afficherTICPE();
       if (key === 'facturation') chargerFacturationReelle();
+      if (key === 'g-resultat') chargerCompteResultat();
+      if (key === 'g-charges') chargerChargesGestion();
       if (key === 'clients') chargerClientsReels();
       if (key === 'dashboard') { chargerTableauDeBord(); chargerCloturesDuJour(); rafraichirAlertes(); }
       if (key === 'historique') chargerHistoriqueReel();
@@ -3286,9 +3427,42 @@
   const facturerLigneOverlay = document.getElementById('modal-facturer-ligne-overlay');
   let currentFacturationRow = null;
 
+  // Cellules « Montant TTC » et « TVA » d'une ligne de facturation (alimentent le compte de résultat)
+  function cellulesMontantHtml(montantTtc, tauxTva) {
+    const taux = tauxTva != null ? Number(tauxTva) : 20;
+    const options = [20, 10, 5.5, 2.1, 0];
+    if (!options.includes(taux)) options.push(taux);
+    return `
+      <td><input type="text" inputmode="decimal" class="input-montant" placeholder="0,00" value="${montantTtc != null ? Number(montantTtc).toFixed(2).replace('.', ',') : ''}"></td>
+      <td><select class="select-tva">${options.map(t => `<option value="${t}" ${t === taux ? 'selected' : ''}>${String(t).replace('.', ',')} %</option>`).join('')}</select></td>`;
+  }
+
+  function brancherChampsMontant(row) {
+    const input = row.querySelector('.input-montant');
+    const select = row.querySelector('.select-tva');
+    if (!input || !select) return;
+    const enregistrer = async (corps) => {
+      if (!row.dataset.serverId) return;
+      const rep = await appelApi(`/facturation/${row.dataset.serverId}`, { method: 'PATCH', body: JSON.stringify(corps) });
+      if (rep) {
+        input.style.borderColor = 'var(--ok)';
+        setTimeout(() => { input.style.borderColor = ''; }, 1200);
+      }
+    };
+    input.addEventListener('change', () => {
+      const brut = input.value.replace(/[^\d.,-]/g, '').replace(',', '.');
+      if (brut === '' || isNaN(parseFloat(brut))) { input.value = ''; enregistrer({ montant_ttc: null }); return; }
+      const valeur = Math.round(parseFloat(brut) * 100) / 100;
+      input.value = valeur.toFixed(2).replace('.', ',');
+      enregistrer({ montant_ttc: valeur });
+    });
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur(); });
+    select.addEventListener('change', () => enregistrer({ taux_tva: parseFloat(select.value) }));
+  }
+
   function attachFacturationRowListener(row) {
     row.addEventListener('click', (e) => {
-      if (e.target.closest('.btn-delete-row')) return;
+      if (e.target.closest('.btn-delete-row, .input-montant, .select-tva')) return;
       currentFacturationRow = row;
       document.getElementById('facturer-ligne-chauffeur').textContent = row.dataset.chauffeurNom;
       document.getElementById('facturer-ligne-sub').textContent = `${row.dataset.client} — ${row.querySelector('td:nth-child(2)').textContent}`;
@@ -3297,6 +3471,7 @@
       document.getElementById('facturer-note').value = row.dataset.note || '';
       facturerLigneOverlay.classList.add('active');
     });
+    brancherChampsMontant(row);
     const delBtn = row.querySelector('.btn-delete-row');
     delBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -3367,6 +3542,7 @@
         <td class="cell-numero mono">${l.numero_facture || '—'}</td>
         <td class="cell-date-facturation mono">${l.date_facturation ? new Date(l.date_facturation + 'T00:00:00').toLocaleDateString('fr-FR') : '—'}</td>
         <td class="cell-note" title="Cliquer pour modifier">${l.note || '—'}</td>
+        ${cellulesMontantHtml(l.montant_ttc, l.taux_tva)}
         <td><button class="btn-delete-row" title="Supprimer">🗑</button></td>
       `;
       tbody.appendChild(tr);
@@ -3544,6 +3720,7 @@
       <td class="cell-numero mono">—</td>
       <td class="cell-date-facturation mono">—</td>
       <td class="cell-note" title="Cliquer pour modifier">—</td>
+      ${cellulesMontantHtml(null, 20)}
       <td><button class="btn-delete-row" title="Supprimer">🗑</button></td>
     `;
     document.getElementById('facturation-tbody').prepend(tr);
@@ -5027,6 +5204,170 @@
       caches.keys().then((noms) => noms.forEach((nom) => caches.delete(nom)));
     }
   }
+
+  // ============================================================
+  // ESPACES : TRANSPORT / GESTION
+  // ============================================================
+  document.querySelectorAll('.nav-item:not([data-espace])').forEach(i => { i.dataset.espace = 'transport'; });
+
+  function afficherChoixEspace() {
+    document.getElementById('app-shell').classList.remove('active');
+    document.getElementById('espace-screen').classList.add('active');
+  }
+  function ouvrirEspace(espace) {
+    document.getElementById('espace-screen').classList.remove('active');
+    document.getElementById('app-shell').classList.add('active');
+    let premier = null;
+    document.querySelectorAll('.nav-item').forEach(i => {
+      const dedans = i.dataset.espace === espace;
+      i.style.display = dedans ? '' : 'none';
+      if (dedans && !premier) premier = i;
+    });
+    document.querySelector('.brand-sub').textContent = espace === 'gestion' ? 'Gestion — Transports A.Blondel' : 'Transports A.Blondel';
+    if (premier) premier.click();
+  }
+  document.querySelectorAll('[data-espace-choix]').forEach(b => {
+    b.addEventListener('click', () => ouvrirEspace(b.dataset.espaceChoix));
+  });
+  document.getElementById('btn-changer-espace').addEventListener('click', afficherChoixEspace);
+
+  // ============================================================
+  // GESTION : COMPTE DE RÉSULTAT
+  // ============================================================
+  const NOMS_MOIS_COURTS = ['Janv', 'Févr', 'Mars', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sept', 'Oct', 'Nov', 'Déc'];
+  const euro = (n) => (Number(n) || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+  const echapper = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  (function initAnneeGestion() {
+    const an = String(new Date().getFullYear());
+    ['g-annee', 'g-charges-annee'].forEach(id => { document.getElementById(id).value = an; });
+  })();
+
+  async function chargerCompteResultat() {
+    const annee = document.getElementById('g-annee').value;
+    document.getElementById('g-titre').textContent = `Compte de résultat — exercice ${annee}`;
+    const d = await appelApi(`/gestion/compte-resultat?annee=${annee}`);
+    if (!d) return;
+
+    const alerte = document.getElementById('g-alerte');
+    if (d.nb_lignes_sans_montant > 0) {
+      alerte.style.display = 'block';
+      alerte.textContent = `${d.nb_lignes_sans_montant} ligne(s) de facturation de ${annee} n'ont pas de montant : elles ne sont pas comptées dans le chiffre d'affaires. Renseignez-les dans Transport › Facturation.`;
+    } else {
+      alerte.style.display = 'none';
+    }
+
+    const classeRes = d.resultat_ht >= 0 ? 'ok' : 'danger';
+    document.getElementById('g-kpis').innerHTML = `
+      <div class="conso-card"><div class="stat-label">Chiffre d'affaires HT</div><div class="stat-value info">${euro(d.produits.total_ht)}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">${euro(d.produits.total_ttc)} TTC · ${d.nb_lignes_facturees} ligne(s)</div></div>
+      <div class="conso-card"><div class="stat-label">Charges HT</div><div class="stat-value warn">${euro(d.charges_totales.total_ht)}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">${euro(d.charges_totales.total_ttc)} TTC</div></div>
+      <div class="conso-card"><div class="stat-label">Résultat HT</div><div class="stat-value ${classeRes}">${euro(d.resultat_ht)}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">Résultat TTC : ${euro(d.resultat_ttc)}</div></div>
+      <div class="conso-card"><div class="stat-label">TVA ${d.tva_a_payer >= 0 ? 'à reverser' : 'à récupérer'}</div><div class="stat-value">${euro(Math.abs(d.tva_a_payer))}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">collectée ${euro(d.tva_collectee)} − déductible ${euro(d.tva_deductible)}</div></div>`;
+
+    const ligne = (nom, b, cls) => `<tr class="${cls || ''}"><td>${echapper(nom)}</td><td class="num">${euro(b.total_ht)}</td><td class="num">${euro(b.total_tva)}</td><td class="num">${euro(b.total_ttc)}</td></tr>`;
+    let html = `<tr class="ligne-section"><td colspan="4">Produits d'exploitation</td></tr>` + ligne('Prestations de transport (ventes)', d.produits);
+    html += `<tr class="ligne-section"><td colspan="4">Charges d'exploitation</td></tr>`;
+    Object.entries(d.charges).forEach(([nom, b]) => { html += ligne(nom, b); });
+    html += ligne('Total des charges', d.charges_totales, 'ligne-total');
+    html += `<tr class="ligne-total"><td>RÉSULTAT DE L'EXERCICE</td><td class="num" style="color:var(--${d.resultat_ht >= 0 ? 'ok' : 'danger'});">${euro(d.resultat_ht)}</td><td class="num">${euro(d.tva_collectee - d.tva_deductible)}</td><td class="num">${euro(d.resultat_ttc)}</td></tr>`;
+    document.getElementById('g-detail-tbody').innerHTML = html;
+
+    document.getElementById('g-mois-thead').innerHTML = '<tr><th></th>' + NOMS_MOIS_COURTS.map(m => `<th class="num">${m}</th>`).join('') + '<th class="num">Total</th></tr>';
+    const ligneMois = (nom, tab, total, cls) => `<tr class="${cls || ''}"><td>${nom}</td>${tab.map(v => `<td class="num">${euro(v)}</td>`).join('')}<td class="num">${euro(total)}</td></tr>`;
+    document.getElementById('g-mois-tbody').innerHTML =
+      ligneMois('Produits HT', d.produits.ht, d.produits.total_ht) +
+      ligneMois('Charges HT', d.charges_totales.ht, d.charges_totales.total_ht) +
+      ligneMois('Résultat HT', d.resultat_mensuel_ht, d.resultat_ht, 'ligne-total') +
+      ligneMois('Produits TTC', d.produits.ttc, d.produits.total_ttc) +
+      ligneMois('Charges TTC', d.charges_totales.ttc, d.charges_totales.total_ttc) +
+      ligneMois('Résultat TTC', d.resultat_mensuel_ttc, d.resultat_ttc, 'ligne-total');
+  }
+  document.getElementById('g-annee').addEventListener('change', chargerCompteResultat);
+  document.getElementById('g-imprimer').addEventListener('click', () => window.print());
+
+  // ============================================================
+  // GESTION : CHARGES ET TVA
+  // ============================================================
+  let categoriesCharges = [];
+  async function chargerChargesGestion() {
+    const annee = document.getElementById('g-charges-annee').value;
+    document.getElementById('g-charges-titre').textContent = `Charges saisies — exercice ${annee}`;
+    const [param, charges] = await Promise.all([appelApi('/gestion/parametres'), appelApi(`/gestion/charges?annee=${annee}`)]);
+    if (param) {
+      categoriesCharges = param.categories;
+      document.getElementById('g-tva-carburant').value = param.parametres.tva_carburant;
+      document.getElementById('g-tva-achats').value = param.parametres.tva_achats_pro;
+    }
+    if (!charges) return;
+    document.getElementById('g-charges-vide').style.display = charges.length === 0 ? 'block' : 'none';
+    document.getElementById('g-charges-tbody').innerHTML = charges.map(c => {
+      const ttc = Math.round(c.montant_ttc * 100) / 100;
+      const ht = Math.round(ttc / (1 + c.taux_tva / 100) * 100) / 100;
+      return `<tr data-id="${c.id}">
+        <td class="mono" style="text-align:left;">${new Date(c.date_charge + 'T00:00:00').toLocaleDateString('fr-FR')}</td>
+        <td style="font-family:inherit; text-align:left;">${echapper(c.libelle)}</td>
+        <td style="font-family:inherit; text-align:left;">${echapper(c.categorie)}</td>
+        <td class="num">${euro(ttc)}</td><td class="num">${String(c.taux_tva).replace('.', ',')} %</td>
+        <td class="num">${euro(ht)}</td><td class="num">${euro(Math.round((ttc - ht) * 100) / 100)}</td>
+        <td><button class="btn-delete-row" title="Supprimer">🗑</button></td></tr>`;
+    }).join('');
+    document.querySelectorAll('#g-charges-tbody .btn-delete-row').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tr = btn.closest('tr');
+        showConfirm('Supprimer cette charge ?', async () => {
+          await appelApi(`/gestion/charges/${tr.dataset.id}`, { method: 'DELETE' });
+          chargerChargesGestion();
+        });
+      });
+    });
+  }
+  document.getElementById('g-charges-annee').addEventListener('change', chargerChargesGestion);
+
+  document.getElementById('g-enregistrer-tva').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    const rep = await appelApi('/gestion/parametres', {
+      method: 'PUT',
+      body: JSON.stringify({
+        tva_carburant: parseFloat(document.getElementById('g-tva-carburant').value),
+        tva_achats_pro: parseFloat(document.getElementById('g-tva-achats').value)
+      })
+    });
+    btn.textContent = rep ? '✓ Enregistré' : 'Échec';
+    setTimeout(() => { btn.disabled = false; btn.textContent = 'Enregistrer'; }, 1500);
+  });
+
+  const chargeOverlay = document.getElementById('modal-add-charge-overlay');
+  document.getElementById('g-ajouter-charge').addEventListener('click', () => {
+    const annee = document.getElementById('g-charges-annee').value;
+    const aujourdhuiISO = new Date().toISOString().slice(0, 10);
+    document.getElementById('charge-date').value = aujourdhuiISO.startsWith(annee) ? aujourdhuiISO : `${annee}-01-01`;
+    document.getElementById('charge-libelle').value = '';
+    document.getElementById('charge-montant').value = '';
+    document.getElementById('charge-taux').value = '20';
+    document.getElementById('charge-categorie').innerHTML = categoriesCharges.map(c => `<option value="${echapper(c)}">${echapper(c)}</option>`).join('');
+    chargeOverlay.classList.add('active');
+  });
+  const fermerCharge = () => chargeOverlay.classList.remove('active');
+  document.getElementById('modal-add-charge-close').addEventListener('click', fermerCharge);
+  document.getElementById('modal-add-charge-close-2').addEventListener('click', fermerCharge);
+  chargeOverlay.addEventListener('click', (e) => { if (e.target === chargeOverlay) fermerCharge(); });
+  document.getElementById('btn-create-charge').addEventListener('click', async () => {
+    const brut = document.getElementById('charge-montant').value.replace(/[^\d.,-]/g, '').replace(',', '.');
+    const montant = parseFloat(brut);
+    const libelle = document.getElementById('charge-libelle').value.trim();
+    const date = document.getElementById('charge-date').value;
+    if (isNaN(montant) || !libelle || !date) { afficherErreurApi('Renseignez la date, le libellé et un montant valide.'); return; }
+    const rep = await appelApi('/gestion/charges', {
+      method: 'POST',
+      body: JSON.stringify({
+        date_charge: date, libelle, categorie: document.getElementById('charge-categorie').value,
+        montant_ttc: Math.round(montant * 100) / 100, taux_tva: parseFloat(document.getElementById('charge-taux').value)
+      })
+    });
+    if (rep) { fermerCharge(); chargerChargesGestion(); }
+  });
+
 </script>
 
   </div>
