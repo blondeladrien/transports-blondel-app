@@ -829,7 +829,7 @@
         <div class="panel" style="margin-bottom:20px;">
           <div class="panel-head">
             <h2>Achats exceptionnels du mois — septembre 2026</h2>
-            <span class="stat-value info" id="achats-pro-total-mois" style="font-size:20px;">— €</span>
+            <span><span class="stat-value info" id="achats-pro-total-mois" style="font-size:20px;">— €</span> <span style="font-size:12px; color:var(--text-dim);">TTC · <span id="achats-pro-total-ht">— €</span> HT</span></span>
           </div>
           <div id="achats-pro-total-par-chauffeur"></div>
         </div>
@@ -844,8 +844,11 @@
               <tr>
                 <th>Date</th>
                 <th>Chauffeur</th>
+                <th>Type d'achat</th>
                 <th>Description</th>
-                <th>Montant</th>
+                <th>Montant TTC</th>
+                <th>TVA</th>
+                <th>Montant HT</th>
                 <th></th>
               </tr>
             </thead>
@@ -1250,7 +1253,7 @@
               <input type="number" id="g-tva-achats" step="0.1" min="0" max="100" style="width:120px;"></div>
             <button class="btn" id="g-enregistrer-tva">Enregistrer</button>
           </div>
-          <div style="font-size:12px; color:var(--text-dim); padding:6px 18px 14px;">Les pleins et les achats pro sont saisis en TTC par les chauffeurs : ils sont convertis en HT automatiquement avec ces taux. Les indemnités de route ne sont plus comptées à part : elles sont incluses dans les salaires (onglet Salaires et DSN). Les ventes se saisissent en HT dans l'onglet Facturation (espace Transport), avec leur taux de TVA sur chaque ligne.</div>
+          <div style="font-size:12px; color:var(--text-dim); padding:6px 18px 14px;">Les pleins sont saisis en TTC par les chauffeurs : ils sont convertis en HT avec le taux carburant. Pour les achats pro, la TVA dépend du type d'achat choisi par le chauffeur (repas 10 %, péages 20 %...) et se corrige dans l'onglet Achats exceptionnels ; le taux « achats pro » ci-dessous ne sert que pour les anciens achats sans type. Les indemnités de route ne sont plus comptées à part : elles sont incluses dans les salaires (onglet Salaires et DSN). Les ventes se saisissent en HT dans l'onglet Facturation (espace Transport), avec leur taux de TVA sur chaque ligne.</div>
         </div>
         <div class="panel">
           <div class="panel-head">
@@ -3035,21 +3038,31 @@
     if (achats) {
       const achatsFiltres = chauffeurFiltre === 'tous' ? achats : achats.filter(a => a.chauffeur_nom === chauffeurFiltre);
       tbody.innerHTML = '';
-      let total = 0;
+      let total = 0, totalHT = 0;
       const parChauffeur = {};
       achatsFiltres.forEach(a => {
         total += a.montant;
+        totalHT += Math.round(a.montant / (1 + a.taux_effectif / 100) * 100) / 100;
         parChauffeur[a.chauffeur_nom] = (parChauffeur[a.chauffeur_nom] || 0) + a.montant;
         const dateAffichee = new Date(a.date_achat + 'T00:00:00').toLocaleDateString('fr-FR');
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td class="mono">${dateAffichee}</td>
           <td>${a.chauffeur_nom}</td>
+          <td>${a.categorie || '<span style="color:var(--text-dim);">—</span>'}</td>
           <td>${a.description || '—'}</td>
           <td class="mono">${a.montant.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €</td>
+          <td><select class="select-tva select-tva-achat" data-achat-id="${a.id}">${[20, 10, 5.5, 2.1, 0].concat([20, 10, 5.5, 2.1, 0].includes(a.taux_effectif) ? [] : [a.taux_effectif]).map(t => `<option value="${t}" ${t === a.taux_effectif ? 'selected' : ''}>${String(t).replace('.', ',')} %</option>`).join('')}</select></td>
+          <td class="mono cell-ht-achat">${euro(Math.round(a.montant / (1 + a.taux_effectif / 100) * 100) / 100)}</td>
           <td><button class="btn-delete-row btn-supprimer-achat" data-achat-id="${a.id}" title="Supprimer">🗑</button></td>
         `;
         tbody.appendChild(tr);
+      });
+      tbody.querySelectorAll('.select-tva-achat').forEach(sel => {
+        sel.addEventListener('change', async () => {
+          const rep = await appelApi(`/achats/${sel.dataset.achatId}`, { method: 'PATCH', body: JSON.stringify({ taux_tva: parseFloat(sel.value) }) });
+          if (rep) updateAchatsProTotalMois();
+        });
       });
       tbody.querySelectorAll('.btn-supprimer-achat').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -3060,10 +3073,11 @@
         });
       });
       if (achatsFiltres.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="placeholder" style="padding:24px;">Aucun achat professionnel déclaré.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="placeholder" style="padding:24px;">Aucun achat professionnel déclaré.</td></tr>';
       }
       document.getElementById('achats-pro-total-mois').textContent =
         total.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+      document.getElementById('achats-pro-total-ht').textContent = euro(Math.round(totalHT * 100) / 100);
       const detailEl = document.getElementById('achats-pro-total-par-chauffeur');
       detailEl.innerHTML = Object.entries(parChauffeur).map(([nom, montant]) => `
         <div class="decl-row" style="padding:10px 18px;">
