@@ -1280,6 +1280,13 @@
           <div class="panel-head">
             <h2 id="gv-titre">Charges variables</h2>
             <div style="display:flex; gap:8px; align-items:center;">
+              <span style="font-size:12px; color:var(--text-dim);">Période</span>
+              <select id="gv-mois" style="background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:12px; padding:6px 10px; border-radius:7px;">
+                <option value="tous">Toute l'année</option>
+                <option value="0">Janvier</option><option value="1">Février</option><option value="2">Mars</option><option value="3">Avril</option>
+                <option value="4">Mai</option><option value="5">Juin</option><option value="6">Juillet</option><option value="7">Août</option>
+                <option value="8">Septembre</option><option value="9">Octobre</option><option value="10">Novembre</option><option value="11">Décembre</option>
+              </select>
               <select id="gv-annee" style="background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:12px; padding:6px 10px; border-radius:7px;">
                 <option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option><option value="2028">2028</option>
               </select>
@@ -1287,6 +1294,16 @@
           </div>
           <div style="font-size:12px; color:var(--text-dim); padding:0 18px 12px;">Charges qui varient avec l'activité et sont reprises automatiquement de l'espace Transport : carburant (pleins enregistrés) et achats professionnels des chauffeurs. Montants HT.</div>
           <div class="conso-summary" id="gv-kpis"></div>
+        </div>
+        <div class="panel" style="margin-bottom:20px;">
+          <div class="panel-head"><h2 id="gv-achats-titre">Détail des achats</h2></div>
+          <div style="overflow-x:auto;">
+            <table class="table-compta">
+              <thead><tr><th>Date</th><th>Origine</th><th>Chauffeur</th><th>Détail</th><th class="num">TTC</th><th class="num">TVA %</th><th class="num">HT</th></tr></thead>
+              <tbody id="gv-achats-tbody"></tbody>
+            </table>
+          </div>
+          <div class="placeholder" id="gv-achats-vide" style="display:none;">Aucun achat sur cette période.</div>
         </div>
         <div class="panel" style="margin-bottom:20px;">
           <div class="panel-head"><h2>Évolution mois par mois (HT)</h2></div>
@@ -6086,22 +6103,33 @@
   async function chargerChargesVariables() {
     const annee = document.getElementById('gv-annee').value;
     document.getElementById('gv-titre').textContent = `Charges variables — exercice ${annee}`;
-    const d = await appelApi(`/gestion/compte-resultat?annee=${annee}`);
+    const [d, pleins, achatsPro] = await Promise.all([
+      appelApi(`/gestion/compte-resultat?annee=${annee}`),
+      appelApi('/pleins'),
+      appelApi('/achats?type=pro')
+    ]);
     if (!d) return;
+    const choix = document.getElementById('gv-mois').value;
+    const m = choix === 'tous' ? null : parseInt(choix, 10);
+    const prefixeMois = m === null ? `${annee}-` : `${annee}-${String(m + 1).padStart(2, '0')}`;
+    document.getElementById('gv-titre').textContent = `Charges variables — ${m === null ? 'exercice ' + annee : NOMS_MOIS_LONGS[m] + ' ' + annee}`;
     const zero = { ht: Array(12).fill(0), tva: Array(12).fill(0), ttc: Array(12).fill(0), total_ht: 0, total_tva: 0, total_ttc: 0 };
     const postes = POSTES_VARIABLES.map(p => ({ ...p, b: d.charges[p.cle] || zero }));
     const r2 = (n) => Math.round(n * 100) / 100;
     const totalMois = Array.from({ length: 12 }, (_, i) => r2(postes.reduce((s, p) => s + p.b.ht[i], 0)));
-    const total = r2(postes.reduce((s, p) => s + p.b.total_ht, 0));
-    const ca = d.produits.total_ht;
+    // Montants sur la période choisie (année entière ou un mois)
+    const pv = (b, k) => m === null ? b['total_' + k] : b[k][m];
+    const total = r2(postes.reduce((s, p) => s + pv(p.b, 'ht'), 0));
+    const totalTtc = r2(postes.reduce((s, p) => s + pv(p.b, 'ttc'), 0));
+    const ca = m === null ? d.produits.total_ht : d.produits.ht[m];
     const nbMoisActifs = totalMois.filter(x => x > 0).length;
-    const moyenne = nbMoisActifs ? r2(total / nbMoisActifs) : 0;
+    const moyenne = nbMoisActifs ? r2(postes.reduce((s, p) => s + p.b.total_ht, 0) / nbMoisActifs) : 0;
     const part = ca ? (total / ca * 100).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %' : '—';
 
     document.getElementById('gv-kpis').innerHTML =
-      `<div class="conso-card"><div class="stat-label">Charges variables HT</div><div class="stat-value warn">${euro(total)}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">${euro(r2(postes.reduce((s, p) => s + p.b.total_ttc, 0)))} TTC</div></div>` +
-      postes.map(p => `<div class="conso-card"><div class="stat-label">${echapper(p.nom)}</div><div class="stat-value">${euro(p.b.total_ht)}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">${total ? (p.b.total_ht / total * 100).toLocaleString('fr-FR', { maximumFractionDigits: 0 }) + ' % des charges variables' : '—'}</div></div>`).join('') +
-      `<div class="conso-card"><div class="stat-label">Moyenne par mois</div><div class="stat-value">${euro(moyenne)}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">sur ${nbMoisActifs} mois avec activité</div></div>` +
+      `<div class="conso-card"><div class="stat-label">Charges variables HT</div><div class="stat-value warn">${euro(total)}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">${euro(totalTtc)} TTC</div></div>` +
+      postes.map(p => `<div class="conso-card"><div class="stat-label">${echapper(p.nom)}</div><div class="stat-value">${euro(pv(p.b, 'ht'))}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">${total ? (pv(p.b, 'ht') / total * 100).toLocaleString('fr-FR', { maximumFractionDigits: 0 }) + ' % des charges variables' : '—'}</div></div>`).join('') +
+      `<div class="conso-card"><div class="stat-label">Moyenne par mois (année)</div><div class="stat-value">${euro(moyenne)}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">sur ${nbMoisActifs} mois avec activité</div></div>` +
       `<div class="conso-card"><div class="stat-label">Part du chiffre d'affaires</div><div class="stat-value">${part}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">charges variables ÷ CA HT</div></div>`;
 
     // Graphique en barres empilées (SVG)
@@ -6120,6 +6148,7 @@
     for (let i = 0; i < 12; i++) {
       const x = gauche + i * largeurCol + largeurCol * 0.18, w = largeurCol * 0.64;
       let cumul = 0;
+      if (m === i) svg += `<rect x="${gauche + i * largeurCol}" y="${haut}" width="${largeurCol}" height="${hauteurUtile}" fill="currentColor" fill-opacity="0.07"/>`;
       postes.forEach(p => {
         const val = p.b.ht[i];
         if (val > 0) {
@@ -6133,6 +6162,27 @@
     const legende = postes.map(p => `<span style="display:inline-flex; align-items:center; gap:6px; margin-right:16px; font-size:12px; color:var(--text-dim);"><span style="width:10px; height:10px; border-radius:2px; background:${p.couleur}; display:inline-block;"></span>${echapper(p.nom)}</span>`).join('');
     document.getElementById('gv-graphique').innerHTML = `<div style="margin-bottom:8px;">${legende}</div>` + svg;
 
+    // Une ligne par achat (pleins + achats pro) sur la période
+    const lignes = [];
+    (pleins || []).filter(x => x.prix_total != null && (x.date_plein || '').startsWith(prefixeMois)).forEach(x => {
+      const ttc = r2(x.prix_total), taux = 20;
+      const detail = [x.type_carburant === 'adblue' ? 'AdBlue' : 'Gasoil', x.litres != null ? x.litres.toLocaleString('fr-FR') + ' L' : null, x.tracteur_immat, x.kilometrage != null ? x.kilometrage.toLocaleString('fr-FR') + ' km' : null].filter(Boolean).join(' · ');
+      lignes.push({ date: x.date_plein, origine: 'Carburant', chauffeur: x.chauffeur_nom || '—', detail, ttc, taux });
+    });
+    (achatsPro || []).filter(x => (x.date_achat || '').startsWith(prefixeMois)).forEach(x => {
+      const taux = x.taux_effectif != null ? x.taux_effectif : 20;
+      lignes.push({ date: x.date_achat, origine: 'Achat pro', chauffeur: x.chauffeur_nom || '—', detail: [x.categorie, x.description].filter(Boolean).join(' · ') || '—', ttc: r2(x.montant), taux });
+    });
+    lignes.sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
+    let sTtc = 0, sHt = 0;
+    const corps = lignes.map(l => {
+      const ht = r2(l.ttc / (1 + l.taux / 100)); sTtc += l.ttc; sHt += ht;
+      return `<tr><td class="mono" style="text-align:left;">${new Date(l.date + 'T00:00:00').toLocaleDateString('fr-FR')}</td><td style="font-family:inherit; text-align:left;">${l.origine}</td><td style="font-family:inherit; text-align:left;">${echapper(l.chauffeur)}</td><td style="font-family:inherit; text-align:left;">${echapper(l.detail)}</td><td class="num">${euro(l.ttc)}</td><td class="num">${String(l.taux).replace('.', ',')} %</td><td class="num">${euro(ht)}</td></tr>`;
+    }).join('');
+    document.getElementById('gv-achats-titre').textContent = `Détail des achats — ${m === null ? 'exercice ' + annee : NOMS_MOIS_LONGS[m] + ' ' + annee} (${lignes.length})`;
+    document.getElementById('gv-achats-vide').style.display = lignes.length ? 'none' : 'block';
+    document.getElementById('gv-achats-tbody').innerHTML = corps + (lignes.length ? `<tr class="ligne-total"><td colspan="4">Total</td><td class="num">${euro(r2(sTtc))}</td><td></td><td class="num">${euro(r2(sHt))}</td></tr>` : '');
+
     document.getElementById('gv-thead').innerHTML = '<tr><th></th>' + NOMS_MOIS_COURTS.map(n => `<th class="num">${n}</th>`).join('') + '<th class="num">Total</th></tr>';
     const lig = (nom, tab, tot, cls) => `<tr class="${cls || ''}"><td>${echapper(nom)}</td>${tab.map(x => `<td class="num">${euro(x)}</td>`).join('')}<td class="num">${euro(tot)}</td></tr>`;
     document.getElementById('gv-tbody').innerHTML =
@@ -6141,6 +6191,7 @@
       lig('Total charges variables TTC', Array.from({ length: 12 }, (_, i) => r2(postes.reduce((s, p) => s + p.b.ttc[i], 0))), r2(postes.reduce((s, p) => s + p.b.total_ttc, 0)));
   }
   document.getElementById('gv-annee').addEventListener('change', chargerChargesVariables);
+  document.getElementById('gv-mois').addEventListener('change', chargerChargesVariables);
 
 </script>
 
