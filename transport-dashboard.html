@@ -484,6 +484,10 @@
         <span class="nav-icon-wrap"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6"/><path d="M17 7h4M17 11h4M17 15h4"/></svg></span>
         Salaires et DSN
       </button>
+      <button class="nav-item" data-view="g-fixes" data-espace="gestion" style="display:none;">
+        <span class="nav-icon-wrap"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.5-5.8"/><path d="M4 4v4.5h4.5"/><path d="M12 8v4l2.5 2"/></svg></span>
+        Charges fixes
+      </button>
       <button class="nav-item" data-view="g-charges" data-espace="gestion" style="display:none;">
         <span class="nav-icon-wrap"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h4"/></svg></span>
         Charges et TVA
@@ -1243,6 +1247,26 @@
         </div>
       </div>
 
+      <div class="view" id="view-g-fixes">
+        <div class="panel" style="margin-bottom:20px;">
+          <div class="panel-head">
+            <h2>Charges fixes</h2>
+            <button class="btn" id="fixe-ajouter">+ Ajouter une charge fixe</button>
+          </div>
+          <div style="font-size:12px; color:var(--text-dim); padding:0 18px 12px;">Loyer, crédit, leasing, assurance, abonnements... Vous la saisissez une seule fois (montant TTC) : elle est comptée automatiquement dans le compte de résultat à chaque échéance, à partir de sa date de début et jusqu'à sa date de fin éventuelle. Si le montant change, terminez l'ancienne (date de fin) et ajoutez la nouvelle.</div>
+          <div class="conso-summary" id="fixe-kpis"></div>
+        </div>
+        <div class="panel">
+          <div style="overflow-x:auto;">
+            <table class="table-compta">
+              <thead><tr><th>Libellé</th><th>Catégorie</th><th>Fréquence</th><th class="num">Montant TTC</th><th class="num">TVA %</th><th class="num">Montant HT</th><th>Début</th><th>Fin</th><th></th></tr></thead>
+              <tbody id="fixe-tbody"></tbody>
+            </table>
+          </div>
+          <div class="placeholder" id="fixe-vide" style="display:none;">Aucune charge fixe enregistrée.</div>
+        </div>
+      </div>
+
       <div class="view" id="view-g-charges">
         <div class="panel" style="margin-bottom:20px;">
           <div class="panel-head"><h2>TVA des charges reprises automatiquement</h2></div>
@@ -1427,6 +1451,39 @@
       <div class="modal-foot">
         <button class="btn-ghost" id="modal-fg-close-2">Annuler</button>
         <button class="btn" id="btn-create-fg">Enregistrer la facture</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-fixe-overlay">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <div class="modal-head-name" id="fixe-modal-titre">Ajouter une charge fixe</div>
+          <div class="modal-head-sub">Comptée automatiquement à chaque échéance</div>
+        </div>
+        <button class="modal-close" id="modal-fixe-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="field"><label>Libellé</label><input type="text" id="fixe-libelle" placeholder="ex. Loyer du dépôt"></div>
+        <div class="field"><label>Catégorie</label><select id="fixe-categorie"></select></div>
+        <div class="field-row">
+          <div class="field"><label>Montant TTC (€)</label><input type="text" inputmode="decimal" id="fixe-montant" placeholder="ex. 1 200,00"></div>
+          <div class="field"><label>Taux de TVA</label>
+            <select id="fixe-taux"><option value="20">20 %</option><option value="10">10 %</option><option value="5.5">5,5 %</option><option value="2.1">2,1 %</option><option value="0">0 % (pas de TVA)</option></select>
+          </div>
+        </div>
+        <div class="field"><label>Fréquence de paiement</label>
+          <select id="fixe-frequence"><option value="mensuelle">Tous les mois</option><option value="trimestrielle">Tous les 3 mois</option><option value="annuelle">Une fois par an</option></select>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Première échéance (date de début)</label><input type="date" id="fixe-debut"></div>
+          <div class="field"><label>Date de fin (optionnel)</label><input type="date" id="fixe-fin"></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn-ghost" id="modal-fixe-close-2">Annuler</button>
+        <button class="btn" id="btn-save-fixe">Enregistrer</button>
       </div>
     </div>
   </div>
@@ -2702,6 +2759,7 @@
     clients: 'Clients',
     'g-resultat': 'Gestion — Compte de résultat',
     'g-salaires': 'Gestion — Salaires et DSN',
+    'g-fixes': 'Gestion — Charges fixes',
     'g-charges': 'Gestion — Charges et TVA'
   };
   items.forEach(item => {
@@ -2719,6 +2777,7 @@
       if (key === 'g-resultat') chargerCompteResultat();
       if (key === 'g-charges') chargerChargesGestion();
       if (key === 'g-salaires') chargerSalaires();
+      if (key === 'g-fixes') chargerChargesFixes();
       if (key === 'clients') chargerClientsReels();
       if (key === 'dashboard') { chargerTableauDeBord(); chargerCloturesDuJour(); rafraichirAlertes(); }
       if (key === 'historique') chargerHistoriqueReel();
@@ -5716,6 +5775,98 @@
     });
     btn.textContent = rep ? '✓ Enregistré' : 'Échec';
     setTimeout(() => { btn.disabled = false; btn.textContent = 'Enregistrer'; }, 1500);
+  });
+
+
+  // ============================================================
+  // GESTION : CHARGES FIXES
+  // ============================================================
+  const PAS_FIXE = { mensuelle: 1, trimestrielle: 3, annuelle: 12 };
+  const LIBELLE_FREQUENCE = { mensuelle: 'Tous les mois', trimestrielle: 'Tous les 3 mois', annuelle: 'Une fois par an' };
+  let chargesFixes = [];
+  let idFixeEnEdition = null;
+
+  async function chargerChargesFixes() {
+    const [liste, param] = await Promise.all([appelApi('/gestion/charges-fixes'), categoriesCharges.length ? Promise.resolve(null) : appelApi('/gestion/parametres')]);
+    if (param) categoriesCharges = param.categories;
+    if (!liste) return;
+    chargesFixes = liste;
+    document.getElementById('fixe-vide').style.display = liste.length === 0 ? 'block' : 'none';
+    const r2 = (n) => Math.round(n * 100) / 100;
+    let mensuelHT = 0, mensuelTTC = 0;
+    const aujourdhuiMois = new Date().toISOString().slice(0, 7);
+    document.getElementById('fixe-tbody').innerHTML = liste.map(c => {
+      const ht = r2(c.montant_ttc / (1 + c.taux_tva / 100));
+      const terminee = c.date_fin && c.date_fin.slice(0, 7) < aujourdhuiMois;
+      if (!terminee) { mensuelHT += ht / PAS_FIXE[c.frequence]; mensuelTTC += c.montant_ttc / PAS_FIXE[c.frequence]; }
+      const date = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('fr-FR') : '—';
+      return `<tr data-id="${c.id}" style="${terminee ? 'opacity:.55;' : ''}">
+        <td style="font-family:inherit; text-align:left;">${echapper(c.libelle)}${terminee ? ' <span style="font-size:11px; color:var(--text-dim);">(terminée)</span>' : ''}</td>
+        <td style="font-family:inherit; text-align:left;">${echapper(c.categorie)}</td>
+        <td style="font-family:inherit; text-align:left;">${LIBELLE_FREQUENCE[c.frequence]}</td>
+        <td class="num">${euro(c.montant_ttc)}</td><td class="num">${String(c.taux_tva).replace('.', ',')} %</td><td class="num">${euro(ht)}</td>
+        <td class="mono" style="text-align:left;">${date(c.date_debut)}</td><td class="mono" style="text-align:left;">${date(c.date_fin)}</td>
+        <td style="white-space:nowrap;"><button class="btn-ghost btn-edit-fixe" style="padding:4px 10px; font-size:12px;">Modifier</button> <button class="btn-delete-row btn-del-fixe" title="Supprimer">🗑</button></td></tr>`;
+    }).join('');
+    document.getElementById('fixe-kpis').innerHTML = `
+      <div class="conso-card"><div class="stat-label">Charges fixes par mois (HT)</div><div class="stat-value warn">${euro(r2(mensuelHT))}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">${euro(r2(mensuelTTC))} TTC · équivalent mensuel des charges en cours</div></div>
+      <div class="conso-card"><div class="stat-label">Charges fixes par an (HT)</div><div class="stat-value">${euro(r2(mensuelHT * 12))}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">${liste.filter(c => !(c.date_fin && c.date_fin.slice(0, 7) < aujourdhuiMois)).length} charge(s) en cours</div></div>`;
+
+    document.querySelectorAll('#fixe-tbody tr').forEach(tr => {
+      const c = chargesFixes.find(x => String(x.id) === tr.dataset.id);
+      tr.querySelector('.btn-edit-fixe').addEventListener('click', () => ouvrirModaleFixe(c));
+      tr.querySelector('.btn-del-fixe').addEventListener('click', () => {
+        showConfirm(`Supprimer la charge fixe « ${c.libelle} » ? Elle ne sera plus comptée dans aucun mois (pour l'arrêter seulement à partir d'une date, utilisez « Modifier » et indiquez une date de fin).`, async () => {
+          await appelApi(`/gestion/charges-fixes/${c.id}`, { method: 'DELETE' });
+          chargerChargesFixes();
+        });
+      });
+    });
+  }
+
+  const fixeOverlay = document.getElementById('modal-fixe-overlay');
+  const fermerFixe = () => fixeOverlay.classList.remove('active');
+  document.getElementById('modal-fixe-close').addEventListener('click', fermerFixe);
+  document.getElementById('modal-fixe-close-2').addEventListener('click', fermerFixe);
+  fixeOverlay.addEventListener('click', (e) => { if (e.target === fixeOverlay) fermerFixe(); });
+
+  function ouvrirModaleFixe(charge) {
+    idFixeEnEdition = charge ? charge.id : null;
+    document.getElementById('fixe-modal-titre').textContent = charge ? 'Modifier la charge fixe' : 'Ajouter une charge fixe';
+    document.getElementById('fixe-categorie').innerHTML = categoriesCharges.map(c => `<option value="${echapper(c)}">${echapper(c)}</option>`).join('');
+    document.getElementById('fixe-libelle').value = charge ? charge.libelle : '';
+    if (charge) {
+      if (!categoriesCharges.includes(charge.categorie)) document.getElementById('fixe-categorie').insertAdjacentHTML('beforeend', `<option value="${echapper(charge.categorie)}">${echapper(charge.categorie)}</option>`);
+      document.getElementById('fixe-categorie').value = charge.categorie;
+    }
+    document.getElementById('fixe-montant').value = charge ? Number(charge.montant_ttc).toFixed(2).replace('.', ',') : '';
+    const tauxSel = document.getElementById('fixe-taux');
+    if (charge && !Array.from(tauxSel.options).some(o => parseFloat(o.value) === charge.taux_tva)) tauxSel.insertAdjacentHTML('beforeend', `<option value="${charge.taux_tva}">${String(charge.taux_tva).replace('.', ',')} %</option>`);
+    tauxSel.value = charge ? String(charge.taux_tva) : '20';
+    document.getElementById('fixe-frequence').value = charge ? charge.frequence : 'mensuelle';
+    document.getElementById('fixe-debut').value = charge ? charge.date_debut : new Date().toISOString().slice(0, 7) + '-01';
+    document.getElementById('fixe-fin').value = charge && charge.date_fin ? charge.date_fin : '';
+    fixeOverlay.classList.add('active');
+  }
+  document.getElementById('fixe-ajouter').addEventListener('click', async () => {
+    if (!categoriesCharges.length) { const p = await appelApi('/gestion/parametres'); if (p) categoriesCharges = p.categories; }
+    ouvrirModaleFixe(null);
+  });
+
+  document.getElementById('btn-save-fixe').addEventListener('click', async () => {
+    const montant = parseFloat(document.getElementById('fixe-montant').value.replace(/[^\d.,-]/g, '').replace(',', '.'));
+    const libelle = document.getElementById('fixe-libelle').value.trim();
+    const debut = document.getElementById('fixe-debut').value;
+    if (isNaN(montant) || !libelle || !debut) { afficherErreurApi('Renseignez le libellé, un montant valide et la date de début.'); return; }
+    const corps = JSON.stringify({
+      libelle, categorie: document.getElementById('fixe-categorie').value, montant_ttc: Math.round(montant * 100) / 100,
+      taux_tva: parseFloat(document.getElementById('fixe-taux').value), frequence: document.getElementById('fixe-frequence').value,
+      date_debut: debut, date_fin: document.getElementById('fixe-fin').value || null
+    });
+    const rep = idFixeEnEdition
+      ? await appelApi(`/gestion/charges-fixes/${idFixeEnEdition}`, { method: 'PUT', body: corps })
+      : await appelApi('/gestion/charges-fixes', { method: 'POST', body: corps });
+    if (rep) { fermerFixe(); chargerChargesFixes(); }
   });
 
 </script>
