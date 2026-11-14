@@ -155,7 +155,8 @@
   body.mode-comptable #btn-changer-espace, body.mode-comptable #btn-rafraichir-page,
   body.mode-comptable .btn-delete-row, body.mode-comptable .btn-change-fixe, body.mode-comptable .btn-edit-fixe,
   body.mode-comptable #fixe-ajouter, body.mode-comptable #g-ajouter-charge, body.mode-comptable #g-ajouter-produit,
-  body.mode-comptable #dsn-enregistrer, body.mode-comptable .reserve-moderateur{display:none !important;}
+  body.mode-comptable #dsn-enregistrer, body.mode-comptable .reserve-moderateur, body.mode-comptable #btn-add-tracteur, body.mode-comptable #btn-add-remorque{display:none !important;}
+  body.mode-comptable .km-cell, body.mode-comptable #view-vehicules td, body.mode-comptable #view-cloture td{pointer-events:none;}
   body.mode-comptable .sal-net, body.mode-comptable #dsn-montant, body.mode-comptable #dsn-date, body.mode-comptable #dsn-note{pointer-events:none; background:transparent; border-color:transparent;}
   .table-compta tr.ligne-pointee td{background:rgba(92,138,221,0.16);}
   .table-compta tbody tr[data-cle]{cursor:pointer;}
@@ -2948,8 +2949,10 @@
   }
 
   let modeComptable = false;
+  const CHEMINS_COMPTABLE = ['/gestion/', '/facturation', '/pleins', '/achats', '/chauffeurs', '/tracteurs', '/remorques', '/declarations', '/indemnites'];
   async function appelApi(chemin, options = {}) {
     if (!apiDisponible) return null;
+    if (modeComptable && ((options.method && options.method !== 'GET') || !CHEMINS_COMPTABLE.some(c => chemin.startsWith(c)))) return null;
     try {
       const reponse = await fetch(`${API_URL}${chemin}`, {
         ...options,
@@ -7015,7 +7018,19 @@
     document.body.classList.add('mode-comptable');
     document.getElementById('login-screen').style.display = 'none';
     ouvrirEspace('gestion');
+    // Deux onglets de l'espace Transport sont ouverts au comptable, en lecture seule : Indemnités (onglet « Chauffeur ») et Véhicules
+    const nav = document.querySelector('.nav');
+    [['cloture', 'Indemnités'], ['vehicules', 'Véhicules']].forEach(([vue, nom]) => {
+      const btn = document.querySelector(`.nav-item[data-view="${vue}"]`);
+      if (!btn) return;
+      btn.style.display = '';
+      const texte = [...btn.childNodes].reverse().find(n => n.nodeType === 3 && n.textContent.trim());
+      if (texte) texte.textContent = '\n        ' + nom + '\n      ';
+      labels[vue] = nom;
+      nav.appendChild(btn);
+    });
     document.querySelector('.brand-sub').textContent = 'Espace comptable — Transports A.Blondel';
+    chargerDonneesInitiales();
     document.addEventListener('focusin', (e) => { if (e.target.matches && e.target.matches('.sal-net, #dsn-montant, #dsn-date, #dsn-note')) e.target.blur(); });
     document.getElementById('btn-deconnexion-comptable').addEventListener('click', () => {
       try { sessionStorage.removeItem('jeton_comptable'); } catch (e) { /* rien */ }
