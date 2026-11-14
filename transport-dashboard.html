@@ -125,6 +125,10 @@
   .brand-logo{width:36px; height:36px; object-fit:contain; flex-shrink:0; filter:drop-shadow(0 2px 6px rgba(0,0,0,0.35));}
   .brand-name{font-size:18px; font-weight:600; letter-spacing:0.2px;}
   .brand-sub{font-size:12px; color:var(--text-dim); margin-top:2px;}
+  .table-compta tr.ligne-pointee td{background:rgba(92,138,221,0.16);}
+  .table-compta tbody tr[data-cle]{cursor:pointer;}
+  .table-compta tbody tr[data-cle]:hover td{background:rgba(255,255,255,0.04);}
+  .table-compta tbody tr.ligne-pointee:hover td{background:rgba(92,138,221,0.22);}
   .nav{padding:16px 10px; flex:1; min-height:0; overflow-y:auto;}
   .nav-item{
     display:flex; align-items:center; gap:11px;
@@ -1362,6 +1366,8 @@
           <div class="panel-head">
             <h2 id="gt-lignes-titre">Toutes les lignes</h2>
             <div style="display:flex; gap:8px; align-items:center;">
+            <span style="font-size:12px; color:var(--text-dim);">Cliquez sur une ligne pour la pointer</span>
+            <button class="btn-ghost" id="gt-effacer-pointage" style="font-size:12px; padding:6px 10px;">Effacer les pointages</button>
             <select id="gt-mois-lignes" style="background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:12px; padding:6px 10px; border-radius:7px;">
               <option value="tous">Toute l'année</option>
               <option value="0">Janvier</option><option value="1">Février</option><option value="2">Mars</option><option value="3">Avril</option>
@@ -1417,6 +1423,8 @@
           <div class="panel-head">
             <h2 id="gp-lignes-titre">Toutes les lignes</h2>
             <div style="display:flex; gap:8px; align-items:center;">
+              <span style="font-size:12px; color:var(--text-dim);">Cliquez sur une ligne pour la pointer</span>
+              <button class="btn-ghost" id="gp-effacer-pointage" style="font-size:12px; padding:6px 10px;">Effacer les pointages</button>
               <select id="gp-mois-lignes" style="background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:12px; padding:6px 10px; border-radius:7px;">
                 <option value="tous">Toute l'année</option>
                 <option value="0">Janvier</option><option value="1">Février</option><option value="2">Mars</option><option value="3">Avril</option>
@@ -6428,7 +6436,7 @@
     const lignesHtml = retenues.map(l => {
       const h2 = ht(l.ttc, l.taux); sTtc += l.ttc; sHt += h2;
       const t = TYPES_CHARGES[l.type];
-      return `<tr><td class="mono" style="text-align:left;">${new Date(l.date + 'T00:00:00').toLocaleDateString('fr-FR')}</td>` +
+      return `<tr data-cle="${echapper([l.type, l.date, l.categorie, l.detail, l.ttc].join('|'))}"><td class="mono" style="text-align:left;">${new Date(l.date + 'T00:00:00').toLocaleDateString('fr-FR')}</td>` +
         `<td style="font-family:inherit; text-align:left;"><span style="display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; background:${t.couleur}26; color:${t.couleur}; border:1px solid ${t.couleur}66;">${t.nom}</span></td>` +
         `<td style="font-family:inherit; text-align:left;">${echapper(l.categorie)}</td><td style="font-family:inherit; text-align:left;">${echapper(l.detail)}</td>` +
         `<td class="num">${euro(l.ttc)}</td><td class="num">${l.type === 'Salaires' ? '—' : String(l.taux).replace('.', ',') + ' %'}</td><td class="num">${euro(h2)}</td></tr>`;
@@ -6436,6 +6444,7 @@
     document.getElementById('gt-lignes-titre').textContent = `Toutes les lignes — ${periode} (${retenues.length})`;
     document.getElementById('gt-lignes-vide').style.display = retenues.length ? 'none' : 'block';
     document.getElementById('gt-lignes-tbody').innerHTML = lignesHtml + (retenues.length ? `<tr class="ligne-total"><td colspan="4">Total</td><td class="num">${euro(r2(sTtc))}</td><td></td><td class="num">${euro(r2(sHt))}</td></tr>` : '');
+    brancherPointage('gt-lignes-tbody', 'pointage-charges');
   }
   document.getElementById('gt-annee').addEventListener('change', chargerTotalCharges);
   document.getElementById('gt-mois').addEventListener('change', afficherTotalCharges);
@@ -6524,7 +6533,7 @@
     const html = retenues.map(l => {
       sHt += l.ht; sTtc += l.ttc;
       const t = TYPES_PRODUITS[l.type];
-      return `<tr><td class="mono" style="text-align:left;">${new Date(l.date + 'T00:00:00').toLocaleDateString('fr-FR')}</td>` +
+      return `<tr data-cle="${echapper([l.type, l.date, l.client, l.detail, l.ttc].join('|'))}"><td class="mono" style="text-align:left;">${new Date(l.date + 'T00:00:00').toLocaleDateString('fr-FR')}</td>` +
         `<td style="font-family:inherit; text-align:left;"><span style="display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; background:${t.couleur}26; color:${t.couleur}; border:1px solid ${t.couleur}66;">${t.nom}</span></td>` +
         `<td style="font-family:inherit; text-align:left;">${echapper(l.client)}</td><td style="font-family:inherit; text-align:left;">${echapper(l.detail)}</td>` +
         `<td class="num">${euro(l.ht)}</td><td class="num">${String(l.taux).replace('.', ',')} %</td><td class="num">${euro(l.ttc)}</td></tr>`;
@@ -6532,11 +6541,46 @@
     document.getElementById('gp-lignes-titre').textContent = `Toutes les lignes — ${periode} (${retenues.length})`;
     document.getElementById('gp-lignes-vide').style.display = retenues.length ? 'none' : 'block';
     document.getElementById('gp-lignes-tbody').innerHTML = html + (retenues.length ? `<tr class="ligne-total"><td colspan="4">Total</td><td class="num">${euro(r2(sHt))}</td><td></td><td class="num">${euro(r2(sTtc))}</td></tr>` : '');
+    brancherPointage('gp-lignes-tbody', 'pointage-produits');
   }
   document.getElementById('gp-annee').addEventListener('change', chargerTotalProduits);
   document.getElementById('gp-mois').addEventListener('change', afficherTotalProduits);
   document.getElementById('gp-mois-lignes').addEventListener('change', (e) => { document.getElementById('gp-mois').value = e.target.value; afficherTotalProduits(); });
   document.getElementById('gp-type').addEventListener('change', afficherTotalProduits);
+
+
+  // ============================================================
+  // POINTAGE DES LIGNES (suivi de compte) : un clic colore la ligne, un second clic l'enlève.
+  // Mémorisé dans ce navigateur, pour retrouver ses pointages à la réouverture.
+  // ============================================================
+  function lirePointages(cle) {
+    try { return new Set(JSON.parse(localStorage.getItem(cle) || '[]')); } catch (e) { return new Set(); }
+  }
+  function ecrirePointages(cle, ensemble) {
+    try { localStorage.setItem(cle, JSON.stringify([...ensemble])); } catch (e) { /* stockage indisponible : le pointage reste valable jusqu'au prochain affichage */ }
+  }
+  const pointagesEnMemoire = {};
+  function brancherPointage(idTbody, cleStockage) {
+    if (!pointagesEnMemoire[cleStockage]) pointagesEnMemoire[cleStockage] = lirePointages(cleStockage);
+    const pointees = pointagesEnMemoire[cleStockage];
+    document.querySelectorAll(`#${idTbody} tr[data-cle]`).forEach(tr => {
+      tr.classList.toggle('ligne-pointee', pointees.has(tr.dataset.cle));
+      tr.addEventListener('click', () => {
+        const actif = tr.classList.toggle('ligne-pointee');
+        if (actif) pointees.add(tr.dataset.cle); else pointees.delete(tr.dataset.cle);
+        ecrirePointages(cleStockage, pointees);
+      });
+    });
+  }
+  function effacerPointages(idTbody, cleStockage) {
+    showConfirm('Effacer tous les pointages de cette liste ?', () => {
+      pointagesEnMemoire[cleStockage] = new Set();
+      ecrirePointages(cleStockage, new Set());
+      document.querySelectorAll(`#${idTbody} tr.ligne-pointee`).forEach(tr => tr.classList.remove('ligne-pointee'));
+    });
+  }
+  document.getElementById('gt-effacer-pointage').addEventListener('click', () => effacerPointages('gt-lignes-tbody', 'pointage-charges'));
+  document.getElementById('gp-effacer-pointage').addEventListener('click', () => effacerPointages('gp-lignes-tbody', 'pointage-produits'));
 
 </script>
 
