@@ -3030,12 +3030,14 @@
   updatePeriodeAchatsProChauffeurFiltre();
   document.getElementById('achats-pro-chauffeur-filtre').addEventListener('change', updateAchatsProTotalMois);
 
+  // Liste de secours : le menu « Type d'achat » n'est jamais vide, même si le serveur tarde à répondre
+  const TYPES_ACHATS_SECOURS = ['Repas / restaurant', 'Hébergement (hôtel)', 'Courses alimentaires (à emporter)', 'Péages', 'Parking', 'Lavage', 'Entretien / réparation', 'Pneumatiques', 'Fournitures / pièces', 'Autre'].map(nom => ({ nom }));
   let typesAchats = [];
   async function updateAchatsProTotalMois() {
     const chauffeurFiltre = document.getElementById('achats-pro-chauffeur-filtre').value;
     if (typesAchats.length === 0) {
       const liste = await appelApi('/achats/categories');
-      if (liste) typesAchats = liste;
+      typesAchats = liste && liste.length ? liste : TYPES_ACHATS_SECOURS;
     }
     const achats = await appelApi('/achats?type=pro');
     const tbody = document.getElementById('achats-pro-tbody');
