@@ -1455,6 +1455,32 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="modal-changer-fixe-overlay">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <div class="modal-head-name">Changer le montant</div>
+          <div class="modal-head-sub" id="chg-sous-titre">—</div>
+        </div>
+        <button class="modal-close" id="modal-chg-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="field-row">
+          <div class="field"><label>Nouveau montant TTC (€)</label><input type="text" inputmode="decimal" id="chg-montant" placeholder="ex. 1 300,00"></div>
+          <div class="field"><label>Taux de TVA</label>
+            <select id="chg-taux"><option value="20">20 %</option><option value="10">10 %</option><option value="5.5">5,5 %</option><option value="2.1">2,1 %</option><option value="0">0 %</option></select>
+          </div>
+        </div>
+        <div class="field"><label>À partir de quel mois ?</label><input type="month" id="chg-mois"></div>
+        <div id="chg-explication" style="font-size:12px; color:var(--text-dim);"></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn-ghost" id="modal-chg-close-2">Annuler</button>
+        <button class="btn" id="btn-save-chg">Appliquer le changement</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="modal-fixe-overlay">
     <div class="modal">
       <div class="modal-head">
@@ -5806,7 +5832,7 @@
         <td style="font-family:inherit; text-align:left;">${LIBELLE_FREQUENCE[c.frequence]}</td>
         <td class="num">${euro(c.montant_ttc)}</td><td class="num">${String(c.taux_tva).replace('.', ',')} %</td><td class="num">${euro(ht)}</td>
         <td class="mono" style="text-align:left;">${date(c.date_debut)}</td><td class="mono" style="text-align:left;">${date(c.date_fin)}</td>
-        <td style="white-space:nowrap;"><button class="btn-ghost btn-edit-fixe" style="padding:4px 10px; font-size:12px;">Modifier</button> <button class="btn-delete-row btn-del-fixe" title="Supprimer">🗑</button></td></tr>`;
+        <td style="white-space:nowrap;">${terminee ? '' : '<button class="btn btn-change-fixe" style="padding:4px 10px; font-size:12px;">Changer le montant</button> '}<button class="btn-ghost btn-edit-fixe" style="padding:4px 10px; font-size:12px;">Modifier</button> <button class="btn-delete-row btn-del-fixe" title="Supprimer">🗑</button></td></tr>`;
     }).join('');
     document.getElementById('fixe-kpis').innerHTML = `
       <div class="conso-card"><div class="stat-label">Charges fixes par mois (HT)</div><div class="stat-value warn">${euro(r2(mensuelHT))}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">${euro(r2(mensuelTTC))} TTC · équivalent mensuel des charges en cours</div></div>
@@ -5815,6 +5841,8 @@
     document.querySelectorAll('#fixe-tbody tr').forEach(tr => {
       const c = chargesFixes.find(x => String(x.id) === tr.dataset.id);
       tr.querySelector('.btn-edit-fixe').addEventListener('click', () => ouvrirModaleFixe(c));
+      const btnChange = tr.querySelector('.btn-change-fixe');
+      if (btnChange) btnChange.addEventListener('click', () => ouvrirModaleChangement(c));
       tr.querySelector('.btn-del-fixe').addEventListener('click', () => {
         showConfirm(`Supprimer la charge fixe « ${c.libelle} » ? Elle ne sera plus comptée dans aucun mois (pour l'arrêter seulement à partir d'une date, utilisez « Modifier » et indiquez une date de fin).`, async () => {
           await appelApi(`/gestion/charges-fixes/${c.id}`, { method: 'DELETE' });
@@ -5867,6 +5895,51 @@
       ? await appelApi(`/gestion/charges-fixes/${idFixeEnEdition}`, { method: 'PUT', body: corps })
       : await appelApi('/gestion/charges-fixes', { method: 'POST', body: corps });
     if (rep) { fermerFixe(); chargerChargesFixes(); }
+  });
+
+
+  // --- Changer le montant d'une charge fixe à partir d'un mois (l'historique est conservé) ---
+  const chgOverlay = document.getElementById('modal-changer-fixe-overlay');
+  const fermerChg = () => chgOverlay.classList.remove('active');
+  document.getElementById('modal-chg-close').addEventListener('click', fermerChg);
+  document.getElementById('modal-chg-close-2').addEventListener('click', fermerChg);
+  chgOverlay.addEventListener('click', (e) => { if (e.target === chgOverlay) fermerChg(); });
+  let chargeEnChangement = null;
+
+  function majExplicationChangement() {
+    const c = chargeEnChangement;
+    const mois = document.getElementById('chg-mois').value;
+    const el = document.getElementById('chg-explication');
+    if (!c || !mois) { el.textContent = ''; return; }
+    const [an, m] = mois.split('-').map(Number);
+    const nomMois = `${NOMS_MOIS_LONGS[m - 1]} ${an}`;
+    const precedent = new Date(an, m - 1, 0);
+    el.textContent = mois <= c.date_debut.slice(0, 7)
+      ? `Cette charge commence en ${nomMois} ou après : le montant sera simplement remplacé.`
+      : `Les mois jusqu'à ${NOMS_MOIS_LONGS[precedent.getMonth()]} ${precedent.getFullYear()} gardent ${euro(c.montant_ttc)} TTC ; à partir de ${nomMois}, le nouveau montant s'applique.`;
+  }
+  function ouvrirModaleChangement(c) {
+    chargeEnChangement = c;
+    document.getElementById('chg-sous-titre').textContent = `${c.libelle} — actuellement ${euro(c.montant_ttc)} TTC`;
+    document.getElementById('chg-montant').value = '';
+    const tauxSel = document.getElementById('chg-taux');
+    if (!Array.from(tauxSel.options).some(o => parseFloat(o.value) === c.taux_tva)) tauxSel.insertAdjacentHTML('beforeend', `<option value="${c.taux_tva}">${String(c.taux_tva).replace('.', ',')} %</option>`);
+    tauxSel.value = String(c.taux_tva);
+    const n = new Date();
+    document.getElementById('chg-mois').value = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`;
+    majExplicationChangement();
+    chgOverlay.classList.add('active');
+  }
+  document.getElementById('chg-mois').addEventListener('input', majExplicationChangement);
+  document.getElementById('btn-save-chg').addEventListener('click', async () => {
+    const montant = parseFloat(document.getElementById('chg-montant').value.replace(/[^\d.,-]/g, '').replace(',', '.'));
+    const mois = document.getElementById('chg-mois').value;
+    if (isNaN(montant) || montant < 0 || !mois) { afficherErreurApi('Indiquez le nouveau montant et le mois à partir duquel il s\'applique.'); return; }
+    const rep = await appelApi(`/gestion/charges-fixes/${chargeEnChangement.id}/changer-montant`, {
+      method: 'POST',
+      body: JSON.stringify({ montant_ttc: Math.round(montant * 100) / 100, taux_tva: parseFloat(document.getElementById('chg-taux').value), date_effet: mois + '-01' })
+    });
+    if (rep) { fermerChg(); chargerChargesFixes(); }
   });
 
 </script>
