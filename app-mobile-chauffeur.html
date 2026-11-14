@@ -414,6 +414,22 @@
               <input type="date" id="achat-pro-date">
             </div>
             <div class="field">
+              <label>Type d'achat</label>
+              <select id="achat-pro-categorie">
+                <option value="">Choisissez le type d'achat</option>
+                <option>Repas / restaurant</option>
+                <option>Hébergement (hôtel)</option>
+                <option>Courses alimentaires (à emporter)</option>
+                <option>Péages</option>
+                <option>Parking</option>
+                <option>Lavage</option>
+                <option>Entretien / réparation</option>
+                <option>Pneumatiques</option>
+                <option>Fournitures / pièces</option>
+                <option>Autre</option>
+              </select>
+            </div>
+            <div class="field">
               <label>Description</label>
               <input type="text" id="achat-pro-description" placeholder="ex. Lavage utilitaire, fournitures...">
             </div>
@@ -1560,8 +1576,11 @@
   document.getElementById('btn-achat-pro').addEventListener('click', async () => {
     const montant = document.getElementById('achat-pro-montant').value.trim();
     if (!montant) return;
+    const categorie = document.getElementById('achat-pro-categorie').value;
+    if (!categorie) { showBanner("⚠️ Choisissez le type d'achat."); return; }
     const description = document.getElementById('achat-pro-description').value.trim();
-    achatsDuJour.unshift({ type: 'pro', description, montant });
+    const dateAchat = document.getElementById('achat-pro-date').value;
+    achatsDuJour.unshift({ type: 'pro', description: description || categorie, montant });
     rafraichirListeAchats();
     let envoiReussi = true;
     if (authToken) {
@@ -1569,13 +1588,14 @@
         const reponse = await fetch(`${API_URL}/achats`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
-          body: JSON.stringify({ type: 'pro', description, montant: parseFloat(montant.replace(',', '.')) || 0 })
+          body: JSON.stringify({ type: 'pro', categorie, description, date_achat: dateAchat || undefined, montant: parseFloat(montant.replace(',', '.')) || 0 })
         });
         envoiReussi = reponse.ok;
       } catch (e) { envoiReussi = false; }
     }
     showBanner(envoiReussi ? 'Achat professionnel enregistré ✓' : "⚠️ Échec de l'envoi — vérifiez votre connexion et réessayez.");
     document.getElementById('achat-pro-date').value = '';
+    document.getElementById('achat-pro-categorie').value = '';
     document.getElementById('achat-pro-description').value = '';
     document.getElementById('achat-pro-montant').value = '';
   });
