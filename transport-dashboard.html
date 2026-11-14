@@ -125,6 +125,30 @@
   .brand-logo{width:36px; height:36px; object-fit:contain; flex-shrink:0; filter:drop-shadow(0 2px 6px rgba(0,0,0,0.35));}
   .brand-name{font-size:18px; font-weight:600; letter-spacing:0.2px;}
   .brand-sub{font-size:12px; color:var(--text-dim); margin-top:2px;}
+  .graph-grille{display:grid; grid-template-columns:repeat(auto-fit,minmax(460px,1fr)); gap:20px; align-items:start;}
+  .graph-grille .graph-large{grid-column:1/-1;}
+  .graph-sous{font-size:12px; color:var(--text-dim); margin-top:3px; font-weight:400;}
+  .graph-svg{width:100%; height:auto; display:block; overflow:visible;}
+  .graph-svg text{fill:var(--text-dim); font-size:11px; font-family:inherit;}
+  .graph-svg text.fort{fill:var(--text); font-weight:600; font-size:12px;}
+  .graph-bande{fill:transparent;}
+  .graph-bande:hover{fill:rgba(255,255,255,0.06);}
+  .graph-legende{display:flex; flex-wrap:wrap; gap:6px 16px; margin:0 0 10px; font-size:12px; color:var(--text-dim);}
+  .graph-legende span{display:inline-flex; align-items:center; gap:6px;}
+  .graph-legende i{display:inline-block; width:10px; height:10px; border-radius:2px;}
+  .graph-tip{position:fixed; z-index:9999; pointer-events:none; background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:8px 11px; font-size:12px; color:var(--text-dim); box-shadow:0 6px 20px rgba(0,0,0,0.35); min-width:150px;}
+  .graph-tip-titre{color:var(--text); font-weight:600; margin-bottom:5px;}
+  .graph-tip-ligne{display:flex; align-items:center; gap:8px; padding:1px 0;}
+  .graph-tip-ligne strong{color:var(--text); font-weight:600; margin-left:auto; order:3; padding-left:14px; font-variant-numeric:tabular-nums;}
+  .graph-tip-cle{width:10px; height:10px; border-radius:2px; flex-shrink:0;}
+  .graph-tip-cle.trait{height:3px; border-radius:2px;}
+  .gb-ligne{display:grid; grid-template-columns:minmax(110px,34%) 1fr; align-items:center; gap:10px; padding:4px 0; border-radius:6px;}
+  .gb-ligne:hover{background:rgba(255,255,255,0.05);}
+  .gb-nom{font-size:12px; color:var(--text-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .gb-piste{position:relative; height:18px;}
+  .gb-barre{position:absolute; left:0; top:0; height:18px; border-radius:0 4px 4px 0;}
+  .gb-val{position:absolute; top:0; line-height:18px; font-size:12px; color:var(--text); font-weight:600; white-space:nowrap; font-variant-numeric:tabular-nums;}
+  .graph-vide{padding:26px 10px; text-align:center; color:var(--text-dim); font-size:13px;}
   .table-compta tr.ligne-pointee td{background:rgba(92,138,221,0.16);}
   .table-compta tbody tr[data-cle]{cursor:pointer;}
   .table-compta tbody tr[data-cle]:hover td{background:rgba(255,255,255,0.04);}
@@ -484,6 +508,10 @@
       <button class="nav-item" data-view="g-resultat" data-espace="gestion" style="display:none;">
         <span class="nav-icon-wrap"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg></span>
         Compte de résultat
+      </button>
+      <button class="nav-item" data-view="g-graphiques" data-espace="gestion" style="display:none;">
+        <span class="nav-icon-wrap"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg></span>
+        Graphiques
       </button>
       <button class="nav-item" data-view="g-salaires" data-espace="gestion" style="display:none;">
         <span class="nav-icon-wrap"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6"/><path d="M17 7h4M17 11h4M17 15h4"/></svg></span>
@@ -1444,6 +1472,22 @@
           </div>
           <div class="placeholder" id="gp-lignes-vide" style="display:none;">Aucun produit sur cette période.</div>
         </div>
+      </div>
+
+      <div class="view" id="view-g-graphiques">
+        <div class="panel" style="margin-bottom:20px;">
+          <div class="panel-head">
+            <h2 id="gg-titre">Graphiques</h2>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <span style="font-size:12px; color:var(--text-dim);">Exercice</span>
+              <select id="gg-annee" style="background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:12px; padding:6px 10px; border-radius:7px;">
+                <option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option><option value="2028">2028</option>
+              </select>
+            </div>
+          </div>
+          <div class="conso-summary" id="gg-kpis"></div>
+        </div>
+        <div class="graph-grille" id="gg-grille"></div>
       </div>
 
       <div class="view" id="view-g-produits">
@@ -3005,6 +3049,7 @@
     'g-fixes': 'Gestion — Charges fixes',
     'g-variables': 'Gestion — Charges variables',
     'g-total': 'Gestion — Total des charges',
+    'g-graphiques': 'Gestion — Graphiques',
     'g-totalprod': 'Gestion — Total des produits',
     'g-charges': 'Gestion — Charges exceptionnelles',
     'g-produits': 'Gestion — Produits exceptionnels'
@@ -3026,6 +3071,7 @@
       if (key === 'g-produits') chargerProduitsExc();
       if (key === 'g-variables') chargerChargesVariables();
       if (key === 'g-total') chargerTotalCharges();
+      if (key === 'g-graphiques') chargerGraphiques();
       if (key === 'g-totalprod') chargerTotalProduits();
       if (key === 'g-salaires') chargerSalaires();
       if (key === 'g-fixes') chargerChargesFixes();
@@ -6581,6 +6627,308 @@
   }
   document.getElementById('gt-effacer-pointage').addEventListener('click', () => effacerPointages('gt-lignes-tbody', 'pointage-charges'));
   document.getElementById('gp-effacer-pointage').addEventListener('click', () => effacerPointages('gp-lignes-tbody', 'pointage-produits'));
+
+
+  // ============================================================
+  // GESTION : GRAPHIQUES (SVG maison, sans bibliothèque)
+  // ============================================================
+  document.getElementById('gg-annee').value = String(new Date().getFullYear());
+  const GC = { bleu: '#3987e5', orange: '#d95926', aqua: '#199e70', jaune: '#c98500', gris: '#7d8590' };
+  const COULEUR_TYPE = { Salaires: GC.bleu, Fixe: GC.orange, Variable: GC.aqua, Exceptionnelle: GC.jaune };
+  const NOM_TYPE = { Salaires: 'Salaires et DSN', Fixe: 'Charges fixes', Variable: 'Charges variables', Exceptionnelle: 'Charges exceptionnelles' };
+
+  const infobulleGraph = document.createElement('div');
+  infobulleGraph.className = 'graph-tip'; infobulleGraph.style.display = 'none';
+  document.body.appendChild(infobulleGraph);
+  function cacherInfobulle() { infobulleGraph.style.display = 'none'; }
+  function montrerInfobulle(e, titre, lignes) {
+    infobulleGraph.textContent = '';
+    const t = document.createElement('div'); t.className = 'graph-tip-titre'; t.textContent = titre; infobulleGraph.appendChild(t);
+    lignes.forEach(l => {
+      const r = document.createElement('div'); r.className = 'graph-tip-ligne';
+      if (l.couleur) { const k = document.createElement('span'); k.className = 'graph-tip-cle' + (l.trait ? ' trait' : ''); k.style.background = l.couleur; r.appendChild(k); }
+      const nom = document.createElement('span'); nom.textContent = l.nom;
+      const val = document.createElement('strong'); val.textContent = l.valeur;
+      r.appendChild(nom); r.appendChild(val); infobulleGraph.appendChild(r);
+    });
+    infobulleGraph.style.display = 'block';
+    const w = infobulleGraph.offsetWidth, hh = infobulleGraph.offsetHeight;
+    let x = e.clientX + 14, y = e.clientY + 14;
+    if (x + w > window.innerWidth - 8) x = e.clientX - w - 14;
+    if (y + hh > window.innerHeight - 8) y = e.clientY - hh - 14;
+    infobulleGraph.style.left = Math.max(4, x) + 'px'; infobulleGraph.style.top = Math.max(4, y) + 'px';
+  }
+
+  const eurosCourts = (n) => { const a = Math.abs(n); return a >= 10000 ? Math.round(n / 1000).toLocaleString('fr-FR') + ' k€' : Math.round(n).toLocaleString('fr-FR') + ' €'; };
+  const pourcent = (n) => n.toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' %';
+  const majuscule = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+  function echelleNette(min, max, base0 = true) {
+    if (base0) { min = Math.min(min, 0); max = Math.max(max, 0); }
+    if (max === min) max = min + 1;
+    const brut = (max - min) / 4, p = Math.pow(10, Math.floor(Math.log10(brut))), f = brut / p;
+    const pas = (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p;
+    const lo = Math.floor(min / pas + 1e-9) * pas, hi = Math.ceil(max / pas - 1e-9) * pas, ticks = [];
+    for (let v = lo; v <= hi + pas / 1000; v += pas) ticks.push(Math.round(v * 1e6) / 1e6);
+    return { lo, hi, ticks };
+  }
+  const barreArrondie = (x, yBase, yHaut, w, r) => {
+    const hh = yBase - yHaut; r = Math.min(r, hh, w / 2);
+    return `M${x} ${yBase}V${yHaut + r}Q${x} ${yHaut} ${x + r} ${yHaut}H${x + w - r}Q${x + w} ${yHaut} ${x + w} ${yHaut + r}V${yBase}Z`;
+  };
+  const legendeHtml = (series) => series.length < 2 ? '' : `<div class="graph-legende">${series.map(s => `<span><i style="background:${s.couleur}"></i>${echapper(s.nom)}</span>`).join('')}</div>`;
+
+  // Colonnes groupées ou empilées, 12 mois
+  function graphColonnes(o) {
+    const W = o.large ? 1160 : 600, H = o.large ? 290 : 240, g = 56, dr = 10, ha = 12, ba = 28, n = o.labels.length, ns = o.series.length;
+    let max = 0;
+    for (let i = 0; i < n; i++) {
+      if (o.mode === 'empile') max = Math.max(max, o.series.reduce((s, x) => s + (x.valeurs[i] || 0), 0));
+      else o.series.forEach(x => { max = Math.max(max, x.valeurs[i] || 0); });
+    }
+    const ech = echelleNette(0, max), pw = W - g - dr, ph = H - ha - ba, bande = pw / n;
+    const fmtAxe = o.fmtAxe || eurosCourts, fmtVal = o.fmtVal || euro;
+    const y = (v) => ha + ph - (v - ech.lo) / (ech.hi - ech.lo) * ph;
+    let s = `<svg viewBox="0 0 ${W} ${H}" class="graph-svg" role="img" aria-label="${echapper(o.titre)}">`;
+    ech.ticks.forEach(t => {
+      s += `<line x1="${g}" x2="${W - dr}" y1="${y(t)}" y2="${y(t)}" stroke="rgba(255,255,255,${t === 0 ? 0.22 : 0.07})" stroke-width="1"/>` +
+           `<text x="${g - 8}" y="${y(t) + 4}" text-anchor="end">${fmtAxe(t)}</text>`;
+    });
+    for (let i = 0; i < n; i++) {
+      const cx = g + i * bande;
+      if (o.mode === 'empile') {
+        const bw = Math.min(24, bande * 0.6), x0 = cx + (bande - bw) / 2;
+        let cum = 0; const dernier = o.series.reduce((k, x, j) => (x.valeurs[i] > 0 ? j : k), -1);
+        o.series.forEach((x, j) => {
+          const v = x.valeurs[i] || 0; if (v <= 0) return;
+          const yHaut = y(cum + v), yBas = y(cum) - (cum > 0 ? 2 : 0);
+          if (yBas - yHaut > 0.5) s += j === dernier ? `<path d="${barreArrondie(x0, yBas, yHaut, bw, 4)}" fill="${x.couleur}"/>` : `<rect x="${x0}" y="${yHaut}" width="${bw}" height="${yBas - yHaut}" fill="${x.couleur}"/>`;
+          cum += v;
+        });
+      } else {
+        const bw = Math.min(24, (bande * 0.72 - 2 * (ns - 1)) / ns), tot = ns * bw + (ns - 1) * 2, x0 = cx + (bande - tot) / 2;
+        o.series.forEach((x, j) => {
+          const v = x.valeurs[i] || 0; if (v <= 0) return;
+          s += `<path d="${barreArrondie(x0 + j * (bw + 2), y(0), y(v), bw, 4)}" fill="${x.couleur}"/>`;
+        });
+      }
+      s += `<text x="${cx + bande / 2}" y="${H - 9}" text-anchor="middle">${NOMS_MOIS_COURTS[i]}</text>`;
+      s += `<rect class="graph-bande" data-i="${i}" x="${cx}" y="${ha}" width="${bande}" height="${ph}"/>`;
+    }
+    s += '</svg>';
+    return {
+      html: legendeHtml(o.series) + s,
+      brancher(el) {
+        el.querySelectorAll('.graph-bande').forEach(r => {
+          const i = parseInt(r.dataset.i, 10);
+          const montrer = (e) => {
+            const lignes = o.series.map(x => ({ couleur: x.couleur, nom: x.nom, valeur: fmtVal(x.valeurs[i] || 0) }));
+            if (o.mode === 'empile') lignes.push({ nom: 'Total', valeur: fmtVal(o.series.reduce((t, x) => t + (x.valeurs[i] || 0), 0)) });
+            (o.infoSup ? o.infoSup(i) : []).forEach(l => lignes.push(l));
+            montrerInfobulle(e, majuscule(NOMS_MOIS_LONGS[i]), lignes);
+          };
+          r.addEventListener('pointermove', montrer); r.addEventListener('pointerleave', cacherInfobulle);
+        });
+      }
+    };
+  }
+
+  // Lignes (une ou plusieurs séries ; valeurs null = pas de point)
+  function graphLignes(o) {
+    const W = o.large ? 1160 : 600, H = o.large ? 290 : 230, g = 56, dr = 18, ha = 18, ba = 28, n = o.labels.length;
+    const vals = o.series.flatMap(x => x.valeurs.filter(v => v != null));
+    const base0 = o.base0 !== false;
+    const ech = vals.length ? echelleNette(Math.min(...vals), Math.max(...vals), base0) : echelleNette(0, 1);
+    const pw = W - g - dr, ph = H - ha - ba, bande = pw / n;
+    const x = (i) => g + (i + 0.5) * bande, y = (v) => ha + ph - (v - ech.lo) / (ech.hi - ech.lo) * ph;
+    const fmtAxe = o.fmtAxe || eurosCourts, fmtVal = o.fmtVal || euro;
+    let s = `<svg viewBox="0 0 ${W} ${H}" class="graph-svg" role="img" aria-label="${echapper(o.titre)}">`;
+    ech.ticks.forEach(t => {
+      s += `<line x1="${g}" x2="${W - dr}" y1="${y(t)}" y2="${y(t)}" stroke="rgba(255,255,255,${t === 0 && base0 ? 0.22 : 0.07})" stroke-width="1"/>` +
+           `<text x="${g - 8}" y="${y(t) + 4}" text-anchor="end">${fmtAxe(t)}</text>`;
+    });
+    for (let i = 0; i < n; i++) s += `<text x="${x(i)}" y="${H - 9}" text-anchor="middle">${NOMS_MOIS_COURTS[i]}</text>`;
+    const baseZone = (ech.lo <= 0 && ech.hi >= 0) ? 0 : ech.lo;
+    o.series.forEach((sr, si) => {
+      let d = '', ouvert = false, pts = [];
+      sr.valeurs.forEach((v, i) => { if (v == null) { ouvert = false; return; } d += (ouvert ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1); ouvert = true; pts.push([i, v]); });
+      if (o.zone && si === 0 && pts.length > 1) {
+        s += `<path d="M${x(pts[0][0]).toFixed(1)} ${y(baseZone)}` + pts.map(([i, v]) => `L${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join('') + `L${x(pts[pts.length - 1][0]).toFixed(1)} ${y(baseZone)}Z" fill="${sr.couleur}" opacity="0.10"/>`;
+      }
+      s += `<path d="${d}" fill="none" stroke="${sr.couleur}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+      if (pts.length) {
+        const [i, v] = pts[pts.length - 1];
+        s += `<circle cx="${x(i)}" cy="${y(v)}" r="4" fill="${sr.couleur}" stroke="var(--panel)" stroke-width="2"/>`;
+        if (o.series.length === 1) {
+          const ancre = x(i) > W - 90 ? 'end' : 'middle', prec = pts.length > 1 ? pts[pts.length - 2][1] : v;
+          const dy = v >= prec ? -11 : 19;   // courbe qui monte : étiquette au-dessus ; qui descend : en dessous (jamais sur la courbe)
+          s += `<text class="fort" x="${x(i)}" y="${y(v) + dy}" text-anchor="${ancre}">${fmtVal(v)}</text>`;
+        }
+      }
+    });
+    s += `<line class="graph-croix" y1="${ha}" y2="${ha + ph}" stroke="rgba(255,255,255,0.25)" stroke-width="1" style="display:none"/>`;
+    o.series.forEach((sr, si) => { s += `<circle class="graph-point" data-s="${si}" r="4" fill="${sr.couleur}" stroke="var(--panel)" stroke-width="2" style="display:none"/>`; });
+    s += `<rect class="graph-hit" x="${g}" y="${ha}" width="${pw}" height="${ph}" fill="transparent"/></svg>`;
+    if (!vals.length) s = `<div class="graph-vide">Pas encore de données sur cette période.</div>`;
+    return {
+      html: legendeHtml(o.series) + s,
+      brancher(el) {
+        const svg = el.querySelector('svg'); if (!svg) return;
+        const croix = svg.querySelector('.graph-croix'), pts = [...svg.querySelectorAll('.graph-point')], hit = svg.querySelector('.graph-hit');
+        hit.addEventListener('pointermove', (e) => {
+          const r = svg.getBoundingClientRect(), px = (e.clientX - r.left) * W / r.width;
+          const i = Math.max(0, Math.min(n - 1, Math.floor((px - g) / bande)));
+          croix.setAttribute('x1', x(i)); croix.setAttribute('x2', x(i)); croix.style.display = '';
+          pts.forEach(p => { const v = o.series[p.dataset.s].valeurs[i]; if (v == null) p.style.display = 'none'; else { p.style.display = ''; p.setAttribute('cx', x(i)); p.setAttribute('cy', y(v)); } });
+          const lignes = o.series.filter(sr => sr.valeurs[i] != null).map(sr => ({ couleur: sr.couleur, trait: true, nom: sr.nom, valeur: fmtVal(sr.valeurs[i]) }));
+          (o.infoSup ? o.infoSup(i) : []).forEach(l => lignes.push(l));
+          montrerInfobulle(e, majuscule(NOMS_MOIS_LONGS[i]), lignes.length ? lignes : [{ nom: 'Pas de donnée', valeur: '—' }]);
+        });
+        hit.addEventListener('pointerleave', () => { croix.style.display = 'none'; pts.forEach(p => { p.style.display = 'none'; }); cacherInfobulle(); });
+      }
+    };
+  }
+
+  // Barres horizontales classées (HTML) : nom, valeur, couleur, détail
+  function graphBarres(o) {
+    const max = Math.max(...o.items.map(i => i.valeur), 0);
+    if (!o.items.length || max <= 0) return { html: `<div class="graph-vide">Pas encore de données sur cette période.</div>`, brancher() {} };
+    const total = o.items.reduce((s, i) => s + i.valeur, 0);
+    const lignes = o.items.map((it, k) => {
+      const w = it.valeur / max * 78;
+      return `<div class="gb-ligne" data-k="${k}"><div class="gb-nom" title="${echapper(it.nom)}">${echapper(it.nom)}</div><div class="gb-piste"><div class="gb-barre" style="width:${w}%; background:${it.couleur || GC.bleu};"></div><div class="gb-val" style="left:calc(${w}% + 8px);">${euro(it.valeur)}</div></div></div>`;
+    }).join('');
+    return {
+      html: (o.legende || '') + lignes,
+      brancher(el) {
+        el.querySelectorAll('.gb-ligne').forEach(r => {
+          const it = o.items[parseInt(r.dataset.k, 10)];
+          r.addEventListener('pointermove', (e) => montrerInfobulle(e, it.nom, [{ couleur: it.couleur || GC.bleu, nom: it.detail || 'Montant HT', valeur: euro(it.valeur) }, { nom: 'Part du total', valeur: total ? pourcent(it.valeur / total * 100) : '—' }]));
+          r.addEventListener('pointerleave', cacherInfobulle);
+        });
+      }
+    };
+  }
+
+  function carteGraph(id, titre, sous, graphe, tableau, large) {
+    const th = tableau.cols.map((c, i) => `<th class="${i ? 'num' : ''}">${echapper(c)}</th>`).join('');
+    const tr = tableau.rows.map(r => `<tr>${r.map((c, i) => `<td class="${i ? 'num' : ''}" style="${i ? '' : 'font-family:inherit; text-align:left;'}">${echapper(String(c))}</td>`).join('')}</tr>`).join('');
+    return `<div class="panel ${large ? 'graph-large' : ''}" id="${id}"><div class="panel-head"><div><h2>${echapper(titre)}</h2><div class="graph-sous">${sous}</div></div><button class="btn-ghost graph-bascule" style="font-size:12px; padding:5px 10px;">Tableau</button></div>` +
+      `<div class="graph-corps" style="padding:6px 18px 18px;">${graphe.html}</div><div class="graph-tableau" style="display:none; overflow-x:auto;"><table class="table-compta"><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table></div></div>`;
+  }
+
+  async function chargerGraphiques() {
+    const annee = parseInt(document.getElementById('gg-annee').value, 10);
+    document.getElementById('gg-titre').textContent = `Graphiques — exercice ${annee}`;
+    const [d, dPrec, pleins, facturation, groupees] = await Promise.all([
+      appelApi(`/gestion/compte-resultat?annee=${annee}`),
+      appelApi(`/gestion/compte-resultat?annee=${annee - 1}`),
+      appelApi('/pleins'),
+      appelApi('/facturation'),
+      appelApi('/facturation/groupees')
+    ]);
+    if (!d) return;
+    const r2 = (n) => Math.round(n * 100) / 100;
+    const anCourant = new Date().getFullYear();
+    const mc = annee < anCourant ? 11 : annee === anCourant ? new Date().getMonth() : -1;   // dernier mois « écoulé »
+    const actif = (i) => i <= mc;
+    const L = NOMS_MOIS_COURTS;
+
+    // Totaux par type de charge, par mois
+    const parType = {}; Object.keys(COULEUR_TYPE).forEach(t => { parType[t] = Array(12).fill(0); });
+    Object.entries(d.charges).forEach(([nom, b]) => { const t = typeDeCharge(nom); b.ht.forEach((v, i) => { parType[t][i] = r2(parType[t][i] + v); }); });
+
+    // Chiffres clés
+    const resHt = d.resultat_ht, prod = d.produits.total_ht, chg = d.charges_totales.total_ht;
+    const nbMois = Math.max(mc + 1, 0);
+    let meilleur = -1; d.resultat_mensuel_ht.forEach((v, i) => { if (actif(i) && (meilleur < 0 || v > d.resultat_mensuel_ht[meilleur])) meilleur = i; });
+    const classe = resHt >= 0 ? 'ok' : 'danger';
+    document.getElementById('gg-kpis').innerHTML =
+      `<div class="conso-card"><div class="stat-label">Résultat HT de l'exercice</div><div class="stat-value ${classe}">${euro(resHt)}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">produits ${euro(prod)} − charges ${euro(chg)}</div></div>` +
+      `<div class="conso-card"><div class="stat-label">Rentabilité</div><div class="stat-value ${classe}">${prod ? pourcent(resHt / prod * 100) : '—'}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">résultat HT ÷ produits HT</div></div>` +
+      `<div class="conso-card"><div class="stat-label">Meilleur mois</div><div class="stat-value">${meilleur >= 0 && prod ? majuscule(NOMS_MOIS_LONGS[meilleur]) : '—'}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">${meilleur >= 0 && prod ? euro(d.resultat_mensuel_ht[meilleur]) + ' de résultat HT' : 'pas encore de données'}</div></div>` +
+      `<div class="conso-card"><div class="stat-label">Charges moyennes par mois</div><div class="stat-value warn">${nbMois ? euro(r2(d.charges_totales.ht.slice(0, nbMois).reduce((s, v) => s + v, 0) / nbMois)) : '—'}</div><div style="font-size:12px; color:var(--text-dim); margin-top:4px;">HT, sur ${nbMois} mois écoulé${nbMois > 1 ? 's' : ''}</div></div>`;
+
+    const cartes = []; const graphes = [];
+    const ajouterCarte = (id, titre, sous, graphe, tableau, large) => { cartes.push(carteGraph(id, titre, sous, graphe, tableau, large)); graphes.push([id, graphe]); };
+    const tabMois = (series, fmt) => ({ cols: ['Mois', ...series.map(s => s.nom)], rows: L.map((m, i) => [m, ...series.map(s => s.valeurs[i] == null ? '—' : fmt(s.valeurs[i]))]) });
+
+    // 1. Produits et charges par mois
+    const s1 = [{ nom: 'Produits HT', couleur: GC.bleu, valeurs: d.produits.ht }, { nom: 'Charges HT', couleur: GC.orange, valeurs: d.charges_totales.ht }];
+    ajouterCarte('gg-1', 'Produits et charges, mois par mois', 'Ce qui rentre face à ce qui sort (HT). Survolez un mois pour voir le résultat.',
+      graphColonnes({ titre: 'Produits et charges par mois', labels: L, series: s1, mode: 'groupe', large: true, infoSup: (i) => [{ nom: 'Résultat', valeur: euro(d.resultat_mensuel_ht[i]) }] }), tabMois(s1, euro), true);
+
+    // 2. Résultat cumulé
+    let cumul = 0;
+    const cumulee = d.resultat_mensuel_ht.map((v, i) => { cumul = r2(cumul + v); return actif(i) ? cumul : null; });
+    const s2 = [{ nom: 'Résultat cumulé HT', couleur: GC.bleu, valeurs: cumulee }];
+    ajouterCarte('gg-2', 'Résultat cumulé depuis janvier', 'Où en est l\'année : la courbe monte quand vous gagnez de l\'argent, descend quand vous en perdez.',
+      graphLignes({ titre: 'Résultat cumulé', labels: L, series: s2, zone: true, infoSup: (i) => [{ nom: 'Résultat du mois', valeur: euro(d.resultat_mensuel_ht[i]) }] }), tabMois(s2, euro));
+
+    // 3. Rentabilité
+    const renta = d.produits.ht.map((p, i) => (actif(i) && p > 0) ? r2(d.resultat_mensuel_ht[i] / p * 100) : null);
+    const s3 = [{ nom: 'Rentabilité', couleur: GC.aqua, valeurs: renta }];
+    ajouterCarte('gg-3', 'Rentabilité par mois', 'Sur 100 € de produits HT, combien il vous reste après les charges.',
+      graphLignes({ titre: 'Rentabilité par mois', labels: L, series: s3, fmtAxe: (t) => t.toLocaleString('fr-FR') + ' %', fmtVal: pourcent }), tabMois(s3, pourcent));
+
+    // 4. Charges par type
+    const s4 = Object.keys(COULEUR_TYPE).map(t => ({ nom: NOM_TYPE[t], couleur: COULEUR_TYPE[t], valeurs: parType[t] }));
+    ajouterCarte('gg-4', 'Charges par type, mois par mois', 'Salaires, charges fixes, variables et exceptionnelles empilés (HT).',
+      graphColonnes({ titre: 'Charges par type', labels: L, series: s4, mode: 'empile' }), tabMois(s4, euro));
+
+    // 5. Où part l'argent : catégories de charges
+    let cats = Object.entries(d.charges).map(([nom, b]) => ({ nom: nom.replace('Exceptionnel — ', ''), brut: nom, valeur: b.total_ht, couleur: COULEUR_TYPE[typeDeCharge(nom)], detail: NOM_TYPE[typeDeCharge(nom)] }))
+      .filter(c => c.valeur > 0).sort((a, b) => b.valeur - a.valeur);
+    if (cats.length > 8) { const reste = cats.slice(7); cats = cats.slice(0, 7); cats.push({ nom: `Autres (${reste.length} postes)`, valeur: r2(reste.reduce((s, c) => s + c.valeur, 0)), couleur: GC.gris, detail: 'Postes regroupés' }); }
+    const leg5 = `<div class="graph-legende">${Object.keys(COULEUR_TYPE).map(t => `<span><i style="background:${COULEUR_TYPE[t]}"></i>${NOM_TYPE[t]}</span>`).join('')}</div>`;
+    ajouterCarte('gg-5', 'Où part l\'argent', 'Les postes de charges les plus lourds de l\'exercice (HT), colorés par type.',
+      graphBarres({ items: cats, legende: leg5 }), { cols: ['Poste', 'Type', 'Montant HT'], rows: cats.map(c => [c.nom, c.detail, euro(c.valeur)]) });
+
+    // 6. Produits par client (date de mission)
+    const parClient = {}; let totalGlobales = 0;
+    (facturation || []).forEach(l => { if (!l.date_mission || !l.date_mission.startsWith(annee + '-') || l.facture_groupee_id || l.montant_ht == null) return; parClient[l.client] = r2((parClient[l.client] || 0) + l.montant_ht); });
+    (groupees || []).filter(f => (f.mois || '').startsWith(annee + '-')).forEach(f => { totalGlobales = r2(totalGlobales + f.montant_ht); });
+    let clients = Object.entries(parClient).map(([nom, valeur]) => ({ nom, valeur, couleur: GC.bleu, detail: 'Ventes de transport HT' })).sort((a, b) => b.valeur - a.valeur);
+    if (clients.length > 8) { const reste = clients.slice(7); clients = clients.slice(0, 7); clients.push({ nom: `Autres clients (${reste.length})`, valeur: r2(reste.reduce((s, c) => s + c.valeur, 0)), couleur: GC.gris, detail: 'Clients regroupés' }); }
+    if (totalGlobales > 0) clients.push({ nom: 'Factures globales (plusieurs clients)', valeur: totalGlobales, couleur: GC.gris, detail: 'Factures globales HT' });
+    clients.sort((a, b) => b.valeur - a.valeur);
+    ajouterCarte('gg-6', 'Chiffre d\'affaires par client', 'Qui vous rapporte le plus (ventes de transport HT, rattachées au mois de la mission).',
+      graphBarres({ items: clients }), { cols: ['Client', 'Montant HT'], rows: clients.map(c => [c.nom, euro(c.valeur)]) });
+
+    // 7 & 8. Gasoil : prix au litre et litres
+    const litres = Array(12).fill(0), depense = Array(12).fill(0);
+    (pleins || []).forEach(x => { if (x.type_carburant === 'adblue' || !x.date_plein || !x.date_plein.startsWith(annee + '-') || !x.litres || x.prix_total == null) return; const mo = parseInt(x.date_plein.slice(5, 7), 10) - 1; litres[mo] += x.litres; depense[mo] += x.prix_total; });
+    const prixLitre = litres.map((l, i) => l > 0 ? Math.round(depense[i] / 1.2 / l * 1000) / 1000 : null);
+    const eurL = (v) => v.toLocaleString('fr-FR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + ' €/L';
+    const s7 = [{ nom: 'Prix moyen HT', couleur: GC.orange, valeurs: prixLitre }];
+    ajouterCarte('gg-7', 'Prix du gasoil au litre', 'Prix moyen payé chaque mois (HT, d\'après vos pleins enregistrés). Utile pour repérer les hausses.',
+      graphLignes({ titre: 'Prix du gasoil', labels: L, series: s7, base0: false, fmtAxe: (t) => t.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), fmtVal: eurL, infoSup: (i) => litres[i] ? [{ nom: 'Litres pris', valeur: Math.round(litres[i]).toLocaleString('fr-FR') + ' L' }, { nom: 'Dépense TTC', valeur: euro(r2(depense[i])) }] : [] }),
+      tabMois(s7, eurL));
+    const fmtL = (v) => Math.round(v).toLocaleString('fr-FR') + ' L';
+    const s8 = [{ nom: 'Litres de gasoil', couleur: GC.aqua, valeurs: litres }];
+    const graphL = graphColonnes({ titre: 'Litres de gasoil', labels: L, series: s8, mode: 'groupe', large: true, fmtAxe: (t) => t.toLocaleString('fr-FR') + ' L', fmtVal: fmtL, infoSup: () => [] });
+    ajouterCarte('gg-8', 'Litres de gasoil par mois', 'Consommation mensuelle de gasoil, tous véhicules confondus.', graphL, tabMois(s8, fmtL), true);
+
+    // 9. Comparaison avec l'année précédente
+    if (dPrec) {
+      const sa = d.produits.ht.map((v, i) => actif(i) ? v : null);
+      const s9 = [{ nom: String(annee), couleur: GC.bleu, valeurs: sa }, { nom: String(annee - 1), couleur: GC.orange, valeurs: dPrec.produits.ht }];
+      ajouterCarte('gg-9', `Produits HT : ${annee} face à ${annee - 1}`, 'Votre activité mois par mois, comparée à l\'année d\'avant.',
+        graphLignes({ titre: 'Comparaison avec l\'année précédente', labels: L, series: s9, large: true }), tabMois(s9, euro), true);
+    }
+
+    const grille = document.getElementById('gg-grille');
+    grille.innerHTML = cartes.join('');
+    graphes.forEach(([id, gr]) => { gr.brancher(document.getElementById(id).querySelector('.graph-corps')); });
+    grille.querySelectorAll('.graph-bascule').forEach(btn => btn.addEventListener('click', () => {
+      const carte = btn.closest('.panel'), tab = carte.querySelector('.graph-tableau'), corps = carte.querySelector('.graph-corps');
+      const montrerTab = tab.style.display === 'none';
+      tab.style.display = montrerTab ? 'block' : 'none'; corps.style.display = montrerTab ? 'none' : 'block';
+      btn.textContent = montrerTab ? 'Graphique' : 'Tableau';
+      cacherInfobulle();
+    }));
+  }
+  document.getElementById('gg-annee').addEventListener('change', chargerGraphiques);
 
 </script>
 
