@@ -1063,7 +1063,7 @@
                 <th>N° de facture</th>
                 <th>Date de facturation</th>
                 <th>Note</th>
-                <th>Montant TTC (€)</th>
+                <th>Montant HT (€)</th>
                 <th>TVA</th>
                 <th></th>
               </tr>
@@ -1072,6 +1072,21 @@
           </table>
           </div>
           <div class="placeholder" id="facturation-vide" style="display:none;">Aucune mission facturable pour cette période.</div>
+        </div>
+
+        <div class="panel" style="margin-top:20px;">
+          <div class="panel-head">
+            <h2 id="groupees-titre">Factures globales</h2>
+            <button class="btn" id="btn-renseigner-facture">+ Renseigner une facture</button>
+          </div>
+          <div style="font-size:12px; color:var(--text-dim); padding:0 18px 12px;">Pour les lignes dont vous ne connaissez pas le prix une par une (paiement au nombre de tours) : une seule facture HT pour le mois, rattachée aux clients encore « à facturer ».</div>
+          <div style="overflow-x:auto;">
+            <table class="table-compta">
+              <thead><tr><th>N° de facture</th><th>Date</th><th>Clients</th><th class="num">Lignes</th><th class="num">Montant HT</th><th class="num">TVA</th><th class="num">TTC</th><th></th></tr></thead>
+              <tbody id="groupees-tbody"></tbody>
+            </table>
+          </div>
+          <div class="placeholder" id="groupees-vide" style="display:none;">Aucune facture globale pour cette période.</div>
         </div>
       </div>
 
@@ -1195,7 +1210,7 @@
               <input type="number" id="g-tva-achats" step="0.1" min="0" max="100" style="width:120px;"></div>
             <button class="btn" id="g-enregistrer-tva">Enregistrer</button>
           </div>
-          <div style="font-size:12px; color:var(--text-dim); padding:6px 18px 14px;">Les montants saisis dans l'app (pleins, achats pro) sont traités comme TTC. Les indemnités de route n'ont pas de TVA. Les ventes ont leur taux sur chaque ligne de l'onglet Facturation (espace Transport).</div>
+          <div style="font-size:12px; color:var(--text-dim); padding:6px 18px 14px;">Les montants saisis dans l'app (pleins, achats pro) sont traités comme TTC. Les indemnités de route n'ont pas de TVA. Les ventes se saisissent en HT dans l'onglet Facturation (espace Transport), avec leur taux de TVA sur chaque ligne.</div>
         </div>
         <div class="panel">
           <div class="panel-head">
@@ -1335,6 +1350,40 @@
       <div class="modal-foot">
         <button class="btn-ghost" id="modal-mission-close-2">Annuler</button>
         <button class="btn" id="btn-create-mission">Créer la mission</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-facture-globale-overlay">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <div class="modal-head-name">Renseigner une facture</div>
+          <div class="modal-head-sub" id="fg-sous-titre">—</div>
+        </div>
+        <button class="modal-close" id="modal-fg-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label>Clients concernés (lignes encore « à facturer » sans montant)</label>
+          <div id="fg-clients" style="display:flex; flex-direction:column; gap:6px; margin-top:4px;"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Montant total HT du mois (€)</label><input type="text" inputmode="decimal" id="fg-montant" placeholder="ex. 4 250,00"></div>
+          <div class="field"><label>Taux de TVA</label>
+            <select id="fg-taux"><option value="20">20 %</option><option value="10">10 %</option><option value="5.5">5,5 %</option><option value="2.1">2,1 %</option><option value="0">0 %</option></select>
+          </div>
+        </div>
+        <div id="fg-ttc" style="font-size:12px; color:var(--text-dim); margin:-6px 0 12px;"></div>
+        <div class="field-row">
+          <div class="field"><label>N° de facture (optionnel)</label><input type="text" id="fg-numero" placeholder="ex. F2026-0150"></div>
+          <div class="field"><label>Date de facturation</label><input type="date" id="fg-date"></div>
+        </div>
+        <div class="field"><label>Note (optionnel)</label><input type="text" id="fg-note" placeholder="ex. 128 tours à 33 €"></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn-ghost" id="modal-fg-close-2">Annuler</button>
+        <button class="btn" id="btn-create-fg">Enregistrer la facture</button>
       </div>
     </div>
   </div>
@@ -3434,12 +3483,15 @@
   let currentFacturationRow = null;
 
   // Cellules « Montant TTC » et « TVA » d'une ligne de facturation (alimentent le compte de résultat)
-  function cellulesMontantHtml(montantTtc, tauxTva) {
+  function cellulesMontantHtml(montantHt, tauxTva, factureGroupeeId) {
+    if (factureGroupeeId) {
+      return `<td colspan="2" style="font-size:12px; color:var(--text-dim);">Couverte par une facture globale</td>`;
+    }
     const taux = tauxTva != null ? Number(tauxTva) : 20;
     const options = [20, 10, 5.5, 2.1, 0];
     if (!options.includes(taux)) options.push(taux);
     return `
-      <td><input type="text" inputmode="decimal" class="input-montant" placeholder="0,00" value="${montantTtc != null ? Number(montantTtc).toFixed(2).replace('.', ',') : ''}"></td>
+      <td><input type="text" inputmode="decimal" class="input-montant" placeholder="0,00" value="${montantHt != null ? Number(montantHt).toFixed(2).replace('.', ',') : ''}"></td>
       <td><select class="select-tva">${options.map(t => `<option value="${t}" ${t === taux ? 'selected' : ''}>${String(t).replace('.', ',')} %</option>`).join('')}</select></td>`;
   }
 
@@ -3457,10 +3509,10 @@
     };
     input.addEventListener('change', () => {
       const brut = input.value.replace(/[^\d.,-]/g, '').replace(',', '.');
-      if (brut === '' || isNaN(parseFloat(brut))) { input.value = ''; enregistrer({ montant_ttc: null }); return; }
+      if (brut === '' || isNaN(parseFloat(brut))) { input.value = ''; enregistrer({ montant_ht: null }); return; }
       const valeur = Math.round(parseFloat(brut) * 100) / 100;
       input.value = valeur.toFixed(2).replace('.', ',');
-      enregistrer({ montant_ttc: valeur });
+      enregistrer({ montant_ht: valeur });
     });
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur(); });
     select.addEventListener('change', () => enregistrer({ taux_tva: parseFloat(select.value) }));
@@ -3540,6 +3592,7 @@
       tr.dataset.numero = l.numero_facture || '';
       tr.dataset.dateFacturation = l.date_facturation || '';
       tr.dataset.note = l.note || '';
+      tr.dataset.groupee = l.facture_groupee_id || '';
       tr.dataset.serverId = l.id;
       tr.innerHTML = `
         <td><div class="driver"><div class="avatar">${avatar}</div> ${l.chauffeur_nom}</div></td>
@@ -3548,7 +3601,7 @@
         <td class="cell-numero mono">${l.numero_facture || '—'}</td>
         <td class="cell-date-facturation mono">${l.date_facturation ? new Date(l.date_facturation + 'T00:00:00').toLocaleDateString('fr-FR') : '—'}</td>
         <td class="cell-note" title="Cliquer pour modifier">${l.note || '—'}</td>
-        ${cellulesMontantHtml(l.montant_ttc, l.taux_tva)}
+        ${cellulesMontantHtml(l.montant_ht, l.taux_tva, l.facture_groupee_id)}
         <td><button class="btn-delete-row" title="Supprimer">🗑</button></td>
       `;
       tbody.appendChild(tr);
@@ -3701,7 +3754,10 @@
       if (correspond) visibles++;
     });
     document.getElementById('facturation-vide').style.display = visibles === 0 ? 'block' : 'none';
+    clearTimeout(minuterieGroupees);
+    minuterieGroupees = setTimeout(chargerFacturesGroupees, 150);
   }
+  let minuterieGroupees = null;
   document.getElementById('facturation-mois').addEventListener('change', afficherFacturation);
   document.getElementById('facturation-annee').addEventListener('change', afficherFacturation);
   afficherFacturation();
@@ -5407,6 +5463,107 @@
       })
     });
     if (rep) { fermerCharge(); chargerChargesGestion(); }
+  });
+
+
+  // ============================================================
+  // FACTURES GLOBALES (lignes sans prix connu, payées au nombre de tours)
+  // ============================================================
+  function moisFacturationISO() {
+    const per = getPeriodeFacturation();
+    return `${per.annee}-${String(per.mois + 1).padStart(2, '0')}`;
+  }
+
+  async function chargerFacturesGroupees() {
+    const mois = moisFacturationISO();
+    const per = getPeriodeFacturation();
+    document.getElementById('groupees-titre').textContent = `Factures globales — ${MOIS_NOMS[per.mois]} ${per.annee}`;
+    const liste = await appelApi(`/facturation/groupees?mois=${mois}`);
+    if (!liste) return;
+    document.getElementById('groupees-vide').style.display = liste.length === 0 ? 'block' : 'none';
+    document.getElementById('groupees-tbody').innerHTML = liste.map(f => {
+      const ht = Math.round(f.montant_ht * 100) / 100;
+      const tva = Math.round(ht * f.taux_tva) / 100;
+      return `<tr data-id="${f.id}">
+        <td style="font-family:inherit; text-align:left;">${echapper(f.numero_facture || ('Facture globale n°' + f.id))}</td>
+        <td class="mono" style="text-align:left;">${f.date_facturation ? new Date(f.date_facturation + 'T00:00:00').toLocaleDateString('fr-FR') : '—'}</td>
+        <td style="font-family:inherit; text-align:left;">${echapper(f.clients)}${f.note ? `<div style="font-size:12px; color:var(--text-dim);">${echapper(f.note)}</div>` : ''}</td>
+        <td class="num">${f.nb_lignes}</td>
+        <td class="num">${euro(ht)}</td><td class="num">${euro(Math.round(tva * 100) / 100)} (${String(f.taux_tva).replace('.', ',')} %)</td><td class="num">${euro(Math.round((ht + tva) * 100) / 100)}</td>
+        <td><button class="btn-delete-row" title="Supprimer cette facture">🗑</button></td></tr>`;
+    }).join('');
+    document.querySelectorAll('#groupees-tbody .btn-delete-row').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tr = btn.closest('tr');
+        showConfirm('Supprimer cette facture globale ? Ses lignes redeviendront « à facturer ».', async () => {
+          await appelApi(`/facturation/groupees/${tr.dataset.id}`, { method: 'DELETE' });
+          chargerFacturationReelle();
+        });
+      });
+    });
+  }
+
+  const fgOverlay = document.getElementById('modal-facture-globale-overlay');
+  const fermerFG = () => fgOverlay.classList.remove('active');
+  document.getElementById('modal-fg-close').addEventListener('click', fermerFG);
+  document.getElementById('modal-fg-close-2').addEventListener('click', fermerFG);
+  fgOverlay.addEventListener('click', (e) => { if (e.target === fgOverlay) fermerFG(); });
+
+  function lireMontantFG() {
+    const brut = document.getElementById('fg-montant').value.replace(/[^\d.,-]/g, '').replace(',', '.');
+    return parseFloat(brut);
+  }
+  function majTtcFG() {
+    const ht = lireMontantFG();
+    const taux = parseFloat(document.getElementById('fg-taux').value);
+    document.getElementById('fg-ttc').textContent = isNaN(ht) ? '' :
+      `TVA ${euro(Math.round(ht * taux) / 100)} · soit ${euro(Math.round(ht * (100 + taux)) / 100)} TTC`;
+  }
+  document.getElementById('fg-montant').addEventListener('input', majTtcFG);
+  document.getElementById('fg-taux').addEventListener('change', majTtcFG);
+
+  document.getElementById('btn-renseigner-facture').addEventListener('click', () => {
+    const mois = moisFacturationISO();
+    const per = getPeriodeFacturation();
+    // Clients dont il reste des lignes rouges (non facturées, sans montant) sur la période affichée
+    const compte = {};
+    document.querySelectorAll('#facturation-tbody tr.non-facturee').forEach(tr => {
+      if (!tr.dataset.date || !tr.dataset.date.startsWith(mois)) return;
+      const champ = tr.querySelector('.input-montant');
+      if (!champ || champ.value.trim() !== '') return;
+      compte[tr.dataset.client] = (compte[tr.dataset.client] || 0) + 1;
+    });
+    const noms = Object.keys(compte).sort();
+    document.getElementById('fg-sous-titre').textContent = `${MOIS_NOMS[per.mois]} ${per.annee}`;
+    document.getElementById('fg-clients').innerHTML = noms.length === 0
+      ? `<div style="font-size:13px; color:var(--warn);">Aucune ligne « à facturer » sans montant sur ce mois.</div>`
+      : noms.map(n => `<label style="display:flex; gap:8px; align-items:center; font-size:14px;"><input type="checkbox" class="fg-client" value="${echapper(n)}" checked> ${echapper(n)} <span style="color:var(--text-dim); font-size:12px;">(${compte[n]} ligne${compte[n] > 1 ? 's' : ''})</span></label>`).join('');
+    document.getElementById('fg-montant').value = '';
+    document.getElementById('fg-taux').value = '20';
+    document.getElementById('fg-numero').value = '';
+    document.getElementById('fg-note').value = '';
+    document.getElementById('fg-ttc').textContent = '';
+    const aujourdhuiISO = new Date().toISOString().slice(0, 10);
+    document.getElementById('fg-date').value = aujourdhuiISO.startsWith(mois) ? aujourdhuiISO : `${mois}-${String(new Date(per.annee, per.mois + 1, 0).getDate()).padStart(2, '0')}`;
+    fgOverlay.classList.add('active');
+  });
+
+  document.getElementById('btn-create-fg').addEventListener('click', async () => {
+    const clients = Array.from(document.querySelectorAll('.fg-client:checked')).map(c => c.value);
+    const montant = lireMontantFG();
+    if (clients.length === 0) { afficherErreurApi('Cochez au moins un client.'); return; }
+    if (isNaN(montant) || montant < 0) { afficherErreurApi('Indiquez le montant total HT.'); return; }
+    const rep = await appelApi('/facturation/groupees', {
+      method: 'POST',
+      body: JSON.stringify({
+        mois: moisFacturationISO(), clients, montant_ht: Math.round(montant * 100) / 100,
+        taux_tva: parseFloat(document.getElementById('fg-taux').value),
+        numero_facture: document.getElementById('fg-numero').value.trim(),
+        date_facturation: document.getElementById('fg-date').value,
+        note: document.getElementById('fg-note').value.trim() || null
+      })
+    });
+    if (rep) { fermerFG(); chargerFacturationReelle(); }
   });
 
 </script>
