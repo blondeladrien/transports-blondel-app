@@ -1356,10 +1356,18 @@
         <div class="panel">
           <div class="panel-head">
             <h2 id="gt-lignes-titre">Toutes les lignes</h2>
+            <div style="display:flex; gap:8px; align-items:center;">
+            <select id="gt-mois-lignes" style="background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:12px; padding:6px 10px; border-radius:7px;">
+              <option value="tous">Toute l'année</option>
+              <option value="0">Janvier</option><option value="1">Février</option><option value="2">Mars</option><option value="3">Avril</option>
+              <option value="4">Mai</option><option value="5">Juin</option><option value="6">Juillet</option><option value="7">Août</option>
+              <option value="8">Septembre</option><option value="9">Octobre</option><option value="10">Novembre</option><option value="11">Décembre</option>
+            </select>
             <select id="gt-type" style="background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:12px; padding:6px 10px; border-radius:7px;">
               <option value="tous">Tous les types</option><option value="Fixe">Fixes</option><option value="Variable">Variables</option>
               <option value="Exceptionnelle">Exceptionnelles</option><option value="Salaires">Salaires et DSN</option>
             </select>
+            </div>
           </div>
           <div style="overflow-x:auto;">
             <table class="table-compta">
@@ -6315,6 +6323,7 @@
     if (!totalChargesDonnees) return;
     const { d, lignes, annee, ht, r2 } = totalChargesDonnees;
     const choix = document.getElementById('gt-mois').value;
+    document.getElementById('gt-mois-lignes').value = choix;
     const m = choix === 'tous' ? null : parseInt(choix, 10);
     const periode = m === null ? `exercice ${annee}` : `${NOMS_MOIS_LONGS[m]} ${annee}`;
     document.getElementById('gt-titre').textContent = `Total des charges — ${periode}`;
@@ -6369,6 +6378,7 @@
   }
   document.getElementById('gt-annee').addEventListener('change', chargerTotalCharges);
   document.getElementById('gt-mois').addEventListener('change', afficherTotalCharges);
+  document.getElementById('gt-mois-lignes').addEventListener('change', (e) => { document.getElementById('gt-mois').value = e.target.value; afficherTotalCharges(); });
   document.getElementById('gt-type').addEventListener('change', afficherTotalCharges);
 
 </script>
