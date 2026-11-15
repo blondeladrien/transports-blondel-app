@@ -1602,6 +1602,7 @@
           <div style="font-size:12.5px; color:var(--text-dim); padding:0 18px 14px; line-height:1.55;">
             Le serveur fait <b>une copie automatique chaque nuit</b> (gardées 14 jours) et une copie à chaque mise à jour de l'application. Ces copies restent sur le même disque que vos données : pour être vraiment protégé, <b>téléchargez régulièrement une sauvegarde</b> (par exemple chaque semaine) et gardez-la sur votre ordinateur ou votre Google Drive.
           </div>
+          <div id="espace-disque" style="font-size:13px; padding:0 18px 14px; line-height:1.6;"></div>
           <div style="overflow-x:auto;">
             <table>
               <thead><tr><th>Date</th><th>Heure</th><th>Type</th><th>Taille</th><th></th></tr></thead>
@@ -7083,6 +7084,16 @@
     const rep = await appelApi('/sauvegardes');
     if (!rep) return;
     const lignes = rep.sauvegardes;
+    const d = await appelApi('/sauvegardes/espace-disque');
+    if (d) {
+      const pct = d.total ? Math.round(d.utilise / d.total * 100) : 0;
+      const alerte = pct >= 80 ? ' style="color:var(--danger,#e5484d); font-weight:600;"' : '';
+      document.getElementById('espace-disque').innerHTML =
+        `<div><b>Disque du serveur :</b> <span${alerte}>${tailleLisible(d.utilise)} utilisés sur ${tailleLisible(d.total)} (${pct} %)</span> — ${tailleLisible(d.libre)} libres</div>` +
+        `<div>Votre base de données : <b>${tailleLisible(d.taille_base)}</b> · les copies de sauvegarde : <b>${tailleLisible(d.taille_sauvegardes)}</b></div>` +
+        (d.persistant === true ? '<div style="color:var(--text-dim);">Les données sont sur un disque persistant (conservées lors des mises à jour).</div>'
+          : d.persistant === false ? '<div style="color:var(--danger,#e5484d); font-weight:600;">⚠ Attention : vos données ne semblent PAS sur un disque persistant. Elles risquent d\'être effacées à chaque mise à jour du serveur. Contactez-moi pour régler cela.</div>' : '');
+    }
     document.getElementById('sauvegardes-vide').style.display = lignes.length ? 'none' : 'block';
     document.getElementById('sauvegardes-tbody').innerHTML = lignes.map(s =>
       `<tr><td class="mono" style="text-align:left;">${new Date(s.date + 'T00:00:00').toLocaleDateString('fr-FR')}</td><td class="mono">${s.heure}</td>` +
