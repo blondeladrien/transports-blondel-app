@@ -1590,6 +1590,26 @@
           </table>
           </div>
         </div>
+
+        <div class="panel" style="margin-top:20px;">
+          <div class="panel-head">
+            <h2>Sauvegarde des données</h2>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="btn" id="btn-sauvegarde-telecharger">⬇ Télécharger une sauvegarde maintenant</button>
+              <button class="btn-ghost" id="btn-sauvegarde-creer">Créer une copie sur le serveur</button>
+            </div>
+          </div>
+          <div style="font-size:12.5px; color:var(--text-dim); padding:0 18px 14px; line-height:1.55;">
+            Le serveur fait <b>une copie automatique chaque nuit</b> (gardées 14 jours) et une copie à chaque mise à jour de l'application. Ces copies restent sur le même disque que vos données : pour être vraiment protégé, <b>téléchargez régulièrement une sauvegarde</b> (par exemple chaque semaine) et gardez-la sur votre ordinateur ou votre Google Drive.
+          </div>
+          <div style="overflow-x:auto;">
+            <table>
+              <thead><tr><th>Date</th><th>Heure</th><th>Type</th><th>Taille</th><th></th></tr></thead>
+              <tbody id="sauvegardes-tbody"></tbody>
+            </table>
+          </div>
+          <div class="placeholder" id="sauvegardes-vide" style="display:none;">Aucune sauvegarde pour l'instant.</div>
+        </div>
       </div>
 
     </div>
@@ -3114,6 +3134,7 @@
       if (key === 'g-charges') chargerChargesGestion();
       if (key === 'g-produits') chargerProduitsExc();
       if (key === 'g-variables') chargerChargesVariables();
+      if (key === 'reglages') chargerSauvegardes();
       if (key === 'g-total') chargerTotalCharges();
       if (key === 'g-comptable') chargerAccesComptable();
       if (key === 'g-graphiques') chargerGraphiques();
@@ -7037,6 +7058,43 @@
       window.location.href = 'comptable.html';
     });
   })();
+
+
+  // ============================================================
+  // SAUVEGARDES DE LA BASE DE DONNÉES (Réglages)
+  // ============================================================
+  const TYPES_SAUVEGARDE = { auto: 'Automatique (nuit)', demarrage: 'Avant mise à jour', manuelle: 'Manuelle' };
+  const tailleLisible = (o) => o >= 1048576 ? (o / 1048576).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' Mo' : Math.max(1, Math.round(o / 1024)).toLocaleString('fr-FR') + ' Ko';
+
+  async function telechargerFichierApi(chemin, nomParDefaut) {
+    try {
+      const reponse = await fetch(`${API_URL}${chemin}`, { headers: { 'Authorization': `Bearer ${authToken}` } });
+      if (!reponse.ok) { const d = await reponse.json().catch(() => ({})); afficherErreurApi(d.erreur || 'Téléchargement impossible.'); return; }
+      const blob = await reponse.blob();
+      const nom = (reponse.headers.get('Content-Disposition') || '').match(/filename="?([^";]+)"?/);
+      const lien = document.createElement('a');
+      lien.href = URL.createObjectURL(blob); lien.download = nom ? nom[1] : nomParDefaut.replace('.db', '_' + new Date().toISOString().slice(0, 10) + '.db');
+      document.body.appendChild(lien); lien.click(); lien.remove();
+      setTimeout(() => URL.revokeObjectURL(lien.href), 5000);
+    } catch (e) { afficherErreurApi('Téléchargement impossible : serveur injoignable.'); }
+  }
+
+  async function chargerSauvegardes() {
+    const rep = await appelApi('/sauvegardes');
+    if (!rep) return;
+    const lignes = rep.sauvegardes;
+    document.getElementById('sauvegardes-vide').style.display = lignes.length ? 'none' : 'block';
+    document.getElementById('sauvegardes-tbody').innerHTML = lignes.map(s =>
+      `<tr><td class="mono" style="text-align:left;">${new Date(s.date + 'T00:00:00').toLocaleDateString('fr-FR')}</td><td class="mono">${s.heure}</td>` +
+      `<td>${echapper(TYPES_SAUVEGARDE[s.type] || s.type)}</td><td class="mono">${tailleLisible(s.taille)}</td>` +
+      `<td><button class="btn-ghost btn-dl-sauvegarde" data-nom="${echapper(s.nom)}" style="font-size:12px; padding:4px 10px;">Télécharger</button></td></tr>`).join('');
+    document.querySelectorAll('.btn-dl-sauvegarde').forEach(b => b.addEventListener('click', () => telechargerFichierApi(`/sauvegardes/fichier/${encodeURIComponent(b.dataset.nom)}`, b.dataset.nom)));
+  }
+  document.getElementById('btn-sauvegarde-telecharger').addEventListener('click', () => telechargerFichierApi('/sauvegardes/telecharger', 'transports_blondel.db'));
+  document.getElementById('btn-sauvegarde-creer').addEventListener('click', async () => {
+    const rep = await appelApi('/sauvegardes', { method: 'POST', body: JSON.stringify({}) });
+    if (rep) chargerSauvegardes();
+  });
 
 </script>
 
