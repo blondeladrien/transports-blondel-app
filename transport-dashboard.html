@@ -1597,6 +1597,8 @@
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
               <button class="btn" id="btn-sauvegarde-telecharger">⬇ Télécharger une sauvegarde maintenant</button>
               <button class="btn-ghost" id="btn-sauvegarde-creer">Créer une copie sur le serveur</button>
+              <button class="btn-ghost" id="btn-sauvegarde-importer">⬆ Importer un fichier de sauvegarde</button>
+              <input type="file" id="fichier-sauvegarde" accept=".db" style="display:none;">
               <button class="btn-ghost" id="btn-sauvegarde-derniere" style="color:var(--danger,#e5484d); border-color:var(--danger,#e5484d);">↩ Revenir à la dernière sauvegarde</button>
             </div>
           </div>
@@ -4442,9 +4444,35 @@
     });
     const deleteBtn = row.querySelector('.btn-delete-row');
     if (deleteBtn) {
+      // Si la ligne porte une mission, la corbeille ne supprime QUE la mission : le chauffeur n'est jamais touché.
+      // La suppression d'un chauffeur n'est possible que sur une ligne SANS mission, avec un message d'avertissement complet.
+      const majTitreCorbeille = () => {
+        deleteBtn.title = row.dataset.missionServerId ? 'Supprimer uniquement la mission (le chauffeur reste)' : 'Supprimer le chauffeur (définitif)';
+      };
+      majTitreCorbeille();
       deleteBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        showConfirm(`Supprimer ${row.dataset.name} de la liste des chauffeurs ?`, () => {
+        if (row.dataset.missionServerId) {
+          const missionId = row.dataset.missionServerId;
+          showConfirm(`Supprimer uniquement cette mission de ${row.dataset.name} ? Le chauffeur reste dans la liste, seule la mission disparaît.`, async () => {
+            await appelApi(`/missions/${missionId}`, { method: 'DELETE' });
+            if (row.dataset.ligneMission === '1') {
+              row.remove();   // ligne créée avec la mission : elle disparaît, la fiche du chauffeur reste dans la liste
+            } else {
+              delete row.dataset.missionServerId;
+              row.dataset.statut = 'Aucune mission assignée';
+              row.dataset.client = '';
+              row.dataset.dateMission = '';
+              const cellule = row.querySelector('td:nth-child(3)');
+              if (cellule) cellule.textContent = 'Aucune tournée assignée';
+              majTitreCorbeille();
+            }
+            chargerPlanningMensuel();
+            rafraichirAlertes();
+          });
+          return;
+        }
+        showConfirm(`ATTENTION : supprimer définitivement le chauffeur ${row.dataset.name} ? Toutes ses missions, sa facturation, ses indemnités, ses achats et ses déclarations seront supprimés avec lui. (En cas d'erreur, il reste récupérable depuis Réglages → « Récupérer un chauffeur supprimé » pendant 14 jours.)`, () => {
           if (row.dataset.serverId) {
             appelApi(`/chauffeurs/${row.dataset.serverId}`, { method: 'DELETE' });
           }
@@ -4505,6 +4533,7 @@
     tr.dataset.client = client;
     tr.dataset.dateMission = date || new Date().toISOString().slice(0, 10);
     if (resultatMissionApi) tr.dataset.missionServerId = resultatMissionApi.id;
+    tr.dataset.ligneMission = '1';
     if (chauffeurServerId) tr.dataset.serverId = chauffeurServerId;
     tr.innerHTML = `
       <td><div class="driver"><div class="avatar">${avatar}</div> ${nom}</div></td>
@@ -7105,6 +7134,17 @@
       if (res) { messageSucces(`Restauration terminée : l'application est revenue à son état du ${quand}. La page va se recharger.`); setTimeout(() => location.reload(), 3000); }
     });
   }
+  document.getElementById('btn-sauvegarde-importer').addEventListener('click', () => document.getElementById('fichier-sauvegarde').click());
+  document.getElementById('fichier-sauvegarde').addEventListener('change', (e) => {
+    const fichier = e.target.files[0];
+    e.target.value = '';
+    if (!fichier) return;
+    showConfirm(`ATTENTION : le fichier « ${fichier.name} » va REMPLACER toutes les données actuelles de l'application (transports et gestion). Une copie de l'état actuel est faite juste avant. Continuer ?`, async () => {
+      if (window.prompt('Pour confirmer, tapez IMPORTER en majuscules :') !== 'IMPORTER') { messageSucces("Importation annulée : rien n'a été modifié."); return; }
+      const res = await appelApi('/sauvegardes/importer?confirmation=IMPORTER', { method: 'POST', body: fichier, headers: { 'Content-Type': 'application/octet-stream' } });
+      if (res) { messageSucces("Importation terminée. Vous allez devoir vous reconnecter avec votre identifiant habituel. La page se recharge."); setTimeout(() => location.reload(), 3500); }
+    });
+  });
   document.getElementById('btn-sauvegarde-derniere').addEventListener('click', () => {
     const derniere = sauvegardesListe.find(s => s.type !== 'restauration') || sauvegardesListe[0];
     if (!derniere) { messageSucces('Aucune sauvegarde disponible.'); return; }
