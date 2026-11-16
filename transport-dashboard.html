@@ -1611,6 +1611,20 @@
           </div>
           <div class="placeholder" id="sauvegardes-vide" style="display:none;">Aucune sauvegarde pour l'instant.</div>
         </div>
+
+        <div class="panel" style="margin-top:20px;">
+          <div class="panel-head"><h2>Récupérer un chauffeur supprimé par erreur</h2></div>
+          <div style="font-size:12.5px; color:var(--text-dim); padding:0 18px 14px; line-height:1.55;">
+            Si vous avez supprimé un chauffeur par erreur, retrouvez-le ici : sa fiche, ses missions, sa facturation, ses indemnités, ses achats et ses déclarations sont recopiés depuis la dernière sauvegarde qui le contenait. <b>Rien d'autre n'est modifié</b> (tout ce qui a été saisi depuis pour les autres chauffeurs est conservé). Seul ce qui a été saisi pour ce chauffeur <i>après</i> la date de la copie est perdu.
+          </div>
+          <div style="overflow-x:auto;">
+            <table>
+              <thead><tr><th>Chauffeur</th><th>Retrouvé dans la copie du</th><th>Missions</th><th>Factures</th><th></th></tr></thead>
+              <tbody id="chauffeurs-supprimes-tbody"></tbody>
+            </table>
+          </div>
+          <div class="placeholder" id="chauffeurs-supprimes-vide" style="display:none;">Aucun chauffeur supprimé à récupérer dans les sauvegardes.</div>
+        </div>
       </div>
 
     </div>
@@ -7094,12 +7108,39 @@
         (d.persistant === true ? '<div style="color:var(--text-dim);">Les données sont sur un disque persistant (conservées lors des mises à jour).</div>'
           : d.persistant === false ? '<div style="color:var(--danger,#e5484d); font-weight:600;">⚠ Attention : vos données ne semblent PAS sur un disque persistant. Elles risquent d\'être effacées à chaque mise à jour du serveur. Contactez-moi pour régler cela.</div>' : '');
     }
+    chargerChauffeursSupprimes();
     document.getElementById('sauvegardes-vide').style.display = lignes.length ? 'none' : 'block';
     document.getElementById('sauvegardes-tbody').innerHTML = lignes.map(s =>
       `<tr><td class="mono" style="text-align:left;">${new Date(s.date + 'T00:00:00').toLocaleDateString('fr-FR')}</td><td class="mono">${s.heure}</td>` +
       `<td>${echapper(TYPES_SAUVEGARDE[s.type] || s.type)}</td><td class="mono">${tailleLisible(s.taille)}</td>` +
       `<td><button class="btn-ghost btn-dl-sauvegarde" data-nom="${echapper(s.nom)}" style="font-size:12px; padding:4px 10px;">Télécharger</button></td></tr>`).join('');
     document.querySelectorAll('.btn-dl-sauvegarde').forEach(b => b.addEventListener('click', () => telechargerFichierApi(`/sauvegardes/fichier/${encodeURIComponent(b.dataset.nom)}`, b.dataset.nom)));
+  }
+  function messageSucces(texte) {
+    const t = document.createElement('div');
+    t.style.cssText = 'position:fixed; bottom:24px; right:24px; z-index:9999; background:#1f8a4c; color:#fff; padding:14px 18px; border-radius:10px; max-width:380px; font-size:13px; line-height:1.5; box-shadow:0 6px 24px rgba(0,0,0,.35);';
+    t.textContent = '✓ ' + texte;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 15000);
+  }
+  async function chargerChauffeursSupprimes() {
+    const rep = await appelApi('/sauvegardes/chauffeurs-supprimes');
+    if (!rep) return;
+    document.getElementById('chauffeurs-supprimes-vide').style.display = rep.chauffeurs.length ? 'none' : 'block';
+    document.getElementById('chauffeurs-supprimes-tbody').innerHTML = rep.chauffeurs.map(c =>
+      `<tr><td><b>${echapper(c.nom)}</b></td><td class="mono">${new Date(c.date + 'T00:00:00').toLocaleDateString('fr-FR')} à ${c.heure}</td>` +
+      `<td class="mono">${c.missions}</td><td class="mono">${c.factures}</td>` +
+      `<td><button class="btn btn-recuperer-chauffeur" data-id="${c.id}" data-nom="${echapper(c.nom)}" data-sauv="${echapper(c.sauvegarde)}" style="font-size:12px; padding:4px 10px;">Récupérer</button></td></tr>`).join('');
+    document.querySelectorAll('.btn-recuperer-chauffeur').forEach(b => b.addEventListener('click', () => {
+      showConfirm(`Récupérer « ${b.dataset.nom} » et toutes ses données depuis la sauvegarde ? Une copie de sécurité de la base actuelle est faite juste avant.`, async () => {
+        const res = await appelApi('/sauvegardes/restaurer-chauffeur', { method: 'POST', body: JSON.stringify({ sauvegarde: b.dataset.sauv, chauffeur_id: Number(b.dataset.id) }) });
+        if (res) {
+          messageSucces(`${res.chauffeur} est de retour : ${res.missions} mission(s), ${res.facturation} ligne(s) de facturation, ${res.indemnites} indemnité(s), ${res.achats} achat(s), ${res.declarations_journee} déclaration(s). ` +
+            (res.compte_mobile ? 'Son compte mobile est aussi rétabli (même identifiant et mot de passe).' : "Son compte mobile n'a pas pu être rétabli : recréez-le dans « Comptes mobile ».") + ' Rechargez la page pour tout revoir.');
+          chargerSauvegardes();
+        }
+      });
+    }));
   }
   document.getElementById('btn-sauvegarde-telecharger').addEventListener('click', () => telechargerFichierApi('/sauvegardes/telecharger', 'transports_blondel.db'));
   document.getElementById('btn-sauvegarde-creer').addEventListener('click', async () => {
