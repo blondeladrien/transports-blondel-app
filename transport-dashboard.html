@@ -1597,6 +1597,7 @@
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
               <button class="btn" id="btn-sauvegarde-telecharger">⬇ Télécharger une sauvegarde maintenant</button>
               <button class="btn-ghost" id="btn-sauvegarde-creer">Créer une copie sur le serveur</button>
+              <button class="btn-ghost" id="btn-sauvegarde-derniere" style="color:var(--danger,#e5484d); border-color:var(--danger,#e5484d);">↩ Revenir à la dernière sauvegarde</button>
             </div>
           </div>
           <div style="font-size:12.5px; color:var(--text-dim); padding:0 18px 14px; line-height:1.55;">
@@ -7078,7 +7079,7 @@
   // ============================================================
   // SAUVEGARDES DE LA BASE DE DONNÉES (Réglages)
   // ============================================================
-  const TYPES_SAUVEGARDE = { auto: 'Automatique (nuit)', demarrage: 'Avant mise à jour', manuelle: 'Manuelle' };
+  const TYPES_SAUVEGARDE = { auto: 'Automatique (nuit)', demarrage: 'Avant mise à jour', manuelle: 'Manuelle', restauration: 'Avant une restauration' };
   const tailleLisible = (o) => o >= 1048576 ? (o / 1048576).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' Mo' : Math.max(1, Math.round(o / 1024)).toLocaleString('fr-FR') + ' Ko';
 
   async function telechargerFichierApi(chemin, nomParDefaut) {
@@ -7093,6 +7094,22 @@
       setTimeout(() => URL.revokeObjectURL(lien.href), 5000);
     } catch (e) { afficherErreurApi('Téléchargement impossible : serveur injoignable.'); }
   }
+
+  let sauvegardesListe = [];
+  function demanderRestauration(nom, date, heure) {
+    const quand = new Date(date + 'T00:00:00').toLocaleDateString('fr-FR') + ' à ' + heure;
+    showConfirm(`ATTENTION : toute l'application (transports ET gestion) va revenir à son état du ${quand}. Tout ce qui a été saisi ou modifié depuis cette date sera PERDU. Une copie de l'état actuel est faite juste avant, au cas où. Continuer ?`, async () => {
+      const saisie = window.prompt('Pour confirmer, tapez RESTAURER en majuscules :');
+      if (saisie !== 'RESTAURER') { messageSucces('Restauration annulée : rien n\'a été modifié.'); return; }
+      const res = await appelApi('/sauvegardes/restaurer', { method: 'POST', body: JSON.stringify({ sauvegarde: nom, confirmation: 'RESTAURER' }) });
+      if (res) { messageSucces(`Restauration terminée : l'application est revenue à son état du ${quand}. La page va se recharger.`); setTimeout(() => location.reload(), 3000); }
+    });
+  }
+  document.getElementById('btn-sauvegarde-derniere').addEventListener('click', () => {
+    const derniere = sauvegardesListe.find(s => s.type !== 'restauration') || sauvegardesListe[0];
+    if (!derniere) { messageSucces('Aucune sauvegarde disponible.'); return; }
+    demanderRestauration(derniere.nom, derniere.date, derniere.heure);
+  });
 
   async function chargerSauvegardes() {
     const rep = await appelApi('/sauvegardes');
@@ -7113,7 +7130,10 @@
     document.getElementById('sauvegardes-tbody').innerHTML = lignes.map(s =>
       `<tr><td class="mono" style="text-align:left;">${new Date(s.date + 'T00:00:00').toLocaleDateString('fr-FR')}</td><td class="mono">${s.heure}</td>` +
       `<td>${echapper(TYPES_SAUVEGARDE[s.type] || s.type)}</td><td class="mono">${tailleLisible(s.taille)}</td>` +
-      `<td><button class="btn-ghost btn-dl-sauvegarde" data-nom="${echapper(s.nom)}" style="font-size:12px; padding:4px 10px;">Télécharger</button></td></tr>`).join('');
+      `<td style="white-space:nowrap;"><button class="btn-ghost btn-dl-sauvegarde" data-nom="${echapper(s.nom)}" style="font-size:12px; padding:4px 10px;">Télécharger</button> ` +
+      `<button class="btn-ghost btn-restaurer-sauvegarde" data-nom="${echapper(s.nom)}" data-date="${s.date}" data-heure="${s.heure}" style="font-size:12px; padding:4px 10px; color:var(--danger,#e5484d);">Restaurer</button></td></tr>`).join('');
+    sauvegardesListe = lignes;
+    document.querySelectorAll('.btn-restaurer-sauvegarde').forEach(b => b.addEventListener('click', () => demanderRestauration(b.dataset.nom, b.dataset.date, b.dataset.heure)));
     document.querySelectorAll('.btn-dl-sauvegarde').forEach(b => b.addEventListener('click', () => telechargerFichierApi(`/sauvegardes/fichier/${encodeURIComponent(b.dataset.nom)}`, b.dataset.nom)));
   }
   function messageSucces(texte) {
